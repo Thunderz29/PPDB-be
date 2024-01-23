@@ -38,6 +38,9 @@ func Connect() {
     }
 
 	db.AutoMigrate(&models.User{})
+	db.AutoMigrate(&models.Category{})
+	db.AutoMigrate(&models.Level{})
+	db.AutoMigrate(&models.Recipe{})
 	DB = db
 }
 
