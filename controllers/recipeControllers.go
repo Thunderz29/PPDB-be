@@ -203,7 +203,7 @@ func GetAllRecipes(c *gin.Context) {
 
 		if err != nil {
 			response := response.MessageResponse{
-				Message:    "Parameter time harus berupa angka",
+				Message:    err.Error(),
 				StatusCode: http.StatusBadRequest,
 				Status:     "ERROR",
 			}
