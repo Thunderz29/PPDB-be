@@ -18,8 +18,12 @@ func main() {
     // Connect to the database (assuming Connect function is defined in the config package)
     config.Connect()
 
-    // Define user-related routes using the UserRoutes function from the routes package
-    routes.UserRoutes(router)
+    apiGroup := router.Group("/api")
+    {
+        // Define user-related routes using the UserRoutes function from the routes package
+        routes.UserRoutes(apiGroup)
+        
+    }
 
     // Run the server on port 8080
     router.Run(":8080")
