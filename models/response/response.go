@@ -6,7 +6,7 @@ type MessageResponse struct {
 	Status     string `json:"status"`
 }
 
-type RecipeListResponse struct {
+type DataResponse struct {
 	Total int64         `json:"total"`
 	Data  []RecipeEntry `json:"data"`
 	Message     string `json:"message"`

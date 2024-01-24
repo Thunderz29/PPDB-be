@@ -8,4 +8,5 @@ import (
 
 func RecipeRoutes(router *gin.Engine) {
 	router.GET("/book-recipe/book-recipes", controllers.GetAllRecipes)
+	router.PUT("/book-recipe/book-recipes/:recipeId/favorites", controllers.ToggleFavorite)
 }

@@ -3,15 +3,140 @@ package controllers
 import (
 	"book-recipe-be-go/config"
 	"book-recipe-be-go/models"
+	"book-recipe-be-go/models/request"
 	"book-recipe-be-go/models/response"
+	"book-recipe-be-go/utils"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
+
 	"github.com/gin-gonic/gin"
-	"github.com/minio/minio-go/v7"
 )
+
+func ToggleFavorite(c *gin.Context) {
+	recipeID := c.Param("recipeId")
+	var toggleRequest request.ToggleFavoriteRequest
+	var favoriteFood models.FavoriteFood
+
+	if err := c.ShouldBindJSON(&toggleRequest); err != nil {
+		response := response.MessageResponse{
+			Message:    err.Error(),
+			StatusCode: http.StatusBadRequest,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	// Mengambil fullname berdasarkan userId
+	fullname, err := utils.GetFullnameByUserID(toggleRequest.UserId)
+	if err != nil {
+		response := response.MessageResponse{
+			Message:    "Error getting user information",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	// Mengkonversi recipId menjadi integer
+	recipeIDInt, err := strconv.Atoi(recipeID)
+	if err != nil {
+		response := response.DataResponse{
+			Total: 0,
+			Data: nil,
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusBadRequest,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	// Mengambil recipe name berdasarkan recipeId
+	recipeName, err := utils.GetRecipeNameByRecipeID(recipeIDInt)
+	if err != nil {
+		response := response.DataResponse{
+			Total: 0,
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	// Check if recipe is already a favorite
+	result := config.DB.Where("user_id = ? AND recipe_id = ?", toggleRequest.UserId, recipeIDInt).First(&favoriteFood)
+	if result.Error == nil {
+		// Recipe is already a favorite, toggle the is_favorite field
+		favoriteFood.IsFavorite = !favoriteFood.IsFavorite
+		favoriteFood.ModifiedBy = fullname
+		favoriteFood.ModifiedTime = time.Now()
+
+		if err := config.DB.Save(&favoriteFood).Error; err != nil {
+			response := response.DataResponse{
+				Total: 0,
+				Data: nil,
+				Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+				StatusCode: http.StatusInternalServerError,
+				Status:     "ERROR",
+			}
+			c.JSON(http.StatusInternalServerError, response)
+			return
+		}
+
+		message := "Resep " + recipeName + " berhasil ditambahkan ke dalam favorit"
+		if !favoriteFood.IsFavorite {
+			message = "Resep " + recipeName + " berhasil dihapus dari favorit"
+		}
+
+		response := response.DataResponse{
+			Total: 1,
+			Data: nil,
+			Message:    message,
+			StatusCode: http.StatusOK,
+			Status:     "OK",
+		}
+		c.JSON(http.StatusOK, response)
+		return
+	}
+
+	// Recipe is not yet a favorite, insert a new favorite record
+	newFavorite := models.FavoriteFood{
+		UserID:       int(toggleRequest.UserId),
+		RecipeID:     recipeIDInt,
+		IsFavorite:   true,
+		CreatedBy:    fullname,
+		CreatedTime:  time.Now(),
+		ModifiedTime: time.Now(),
+	}
+
+	if err := config.DB.Create(&newFavorite).Error; err != nil {
+		response := response.DataResponse{
+			Total: 0,
+			Data: nil,
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	response := response.DataResponse{
+		Total: 1,
+		Data: nil,
+		Message:    "Resep " + recipeName + "berhasil ditambahkan ke dalam favorit",
+		StatusCode: http.StatusOK,
+		Status:     "OK",
+	}
+	c.JSON(http.StatusOK, response)
+}
 
 func GetAllRecipes(c *gin.Context) {
 	var recipes []models.Recipe
@@ -31,6 +156,7 @@ func GetAllRecipes(c *gin.Context) {
 	categoryID := c.Query("categoryId")
 	time := c.Query("time")
 	sortBy := c.DefaultQuery("sortBy", "")
+	userID := c.Query("userId")
 
 	// Mengonversi nilai string ke integer
 	pageNumberInt, _ := strconv.Atoi(pageNumber)
@@ -43,6 +169,16 @@ func GetAllRecipes(c *gin.Context) {
 
 	if pageSizeInt <= 0 {
 		pageSizeInt = 10 // Atur ke ukuran halaman default
+	}
+
+	if(userID == ""){
+		response := response.MessageResponse{
+			Message:    "User tidak valid",
+			StatusCode: http.StatusUnauthorized,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
 	}
 
 	// Filter by recipe name
@@ -130,24 +266,36 @@ func GetAllRecipes(c *gin.Context) {
 	// Modify the response mapping
 	var recipeEntries []response.RecipeEntry
 	for _, recipe := range recipes {
-		categoryName, err := getCategoryName(recipe.Category.CategoryID)
+		categoryName, err := utils.GetCategoryName(recipe.Category.CategoryID)
 		if err != nil {
 			log.Println("Error fetching category name:", err)
 			categoryName = "Unknown Category"
 		}
 
-		levelName, err := getLevelName(recipe.Level.LevelID)
+		levelName, err := utils.GetLevelName(recipe.Level.LevelID)
 		if err != nil {
 			log.Println("Error fetching level name:", err)
 			levelName = "Unknown Level"
 		}
 
-		imageUrl, err := getImageURL(minioClient, recipe.ImageFilename)
+		imageUrl, err := utils.GetImageURL(minioClient, recipe.ImageFilename)
 		if err != nil {
 			log.Println("Error getting image URL:", err)
-			// Handle or return an appropriate response
 			continue
 		}
+
+		userIDInt, err := strconv.Atoi(userID)
+		if err != nil {
+			response := response.MessageResponse{
+				Message:    err.Error(),
+				StatusCode: http.StatusBadRequest,
+				Status:     "ERROR",
+			}
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+
+		isFavorite := utils.CheckFavoriteRecipe(uint(userIDInt), recipe.RecipeID)
 
 		entry := response.RecipeEntry{
 			RecipeId:   recipe.RecipeID,
@@ -156,7 +304,7 @@ func GetAllRecipes(c *gin.Context) {
 			RecipeName: recipe.RecipeName,
 			ImageUrl:   imageUrl,
 			Time:       recipe.TimeCook,
-			IsFavorite: false, // You need to set this based on your logic
+			IsFavorite: isFavorite,
 		}
 
 		recipeEntries = append(recipeEntries, entry)
@@ -172,7 +320,7 @@ func GetAllRecipes(c *gin.Context) {
 		return
 	}
 	
-	response := response.RecipeListResponse{
+	response := response.DataResponse{
 		Total:      total,
 		Data:       recipeEntries,
 		Message:    "Berhasil memuat Resep Masakan Saya!",
@@ -180,29 +328,4 @@ func GetAllRecipes(c *gin.Context) {
 		Status:     "Success",
 	}
 	c.JSON(http.StatusOK, response)
-}
-
-func getCategoryName(categoryID int) (string, error) {
-	var category models.Category
-	if err := config.DB.Model(&models.Category{}).Where("category_id = ?", categoryID).First(&category).Error; err != nil {
-		return "", err
-	}
-	return category.CategoryName, nil
-}
-
-func getLevelName(levelID int) (string, error) {
-	var level models.Level
-	if err := config.DB.Model(&models.Level{}).Where("level_id = ?", levelID).First(&level).Error; err != nil {
-		return "", err
-	}
-	return level.LevelName, nil
-}
-
-func getImageURL(minioClient *minio.Client, filename string) (string, error) {
-	url, err := config.GetPublicLink(minioClient, filename)
-	if err != nil {
-		return "", err
-	}
-
-	return url, nil
 }
