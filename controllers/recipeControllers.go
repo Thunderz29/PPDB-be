@@ -103,22 +103,13 @@ func GetAllRecipes(c *gin.Context) {
 		}
 	}
 
-	// Menghitung jumlah total data
-	if err := db.Count(&total).Error; err != nil {
-		response := response.MessageResponse{
-			Message:    "Terjadi kesalahan saat mengambil data resep",
-			StatusCode: http.StatusInternalServerError,
-			Status:     "ERROR",
-		}
-		c.JSON(http.StatusInternalServerError, response)
-		return
-	}
-
 	// Menggunakan Joins untuk mengambil data dari tabel levels dan categories
 	if err := db.
 		Preload("Category").
 		Preload("Level").
 		Order("LOWER(recipe_name) ASC").
+		Where("is_deleted = ?", false).
+		Count(&total).
 		Limit(pageSizeInt).Offset((pageNumberInt - 1) * pageSizeInt).
 		Find(&recipes).Error; err != nil {
 		response := response.MessageResponse{
@@ -157,6 +148,16 @@ func GetAllRecipes(c *gin.Context) {
 		recipeEntries = append(recipeEntries, entry)
 	}
 
+	if len(recipeEntries) == 0 {
+		response := response.MessageResponse{
+			Message:    "Resep masakan tidak tersedia",
+			StatusCode: http.StatusNotFound,
+			Status:     "OK",
+		}
+		c.JSON(http.StatusNotFound, response)
+		return
+	}
+	
 	response := response.RecipeListResponse{
 		Total:      total,
 		Data:       recipeEntries,
