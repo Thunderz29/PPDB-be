@@ -9,13 +9,19 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-
 	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v7"
 )
 
 func GetAllRecipes(c *gin.Context) {
 	var recipes []models.Recipe
 	var total int64
+
+	minioClient, err := config.ConfigMinio()
+    if err != nil {
+        log.Fatalln(err)
+        return
+    }
 
 	// filter
 	pageNumber := c.DefaultQuery("pageNumber", "1")
@@ -135,12 +141,20 @@ func GetAllRecipes(c *gin.Context) {
 			log.Println("Error fetching level name:", err)
 			levelName = "Unknown Level"
 		}
+
+		imageUrl, err := getImageURL(minioClient, recipe.ImageFilename)
+		if err != nil {
+			log.Println("Error getting image URL:", err)
+			// Handle or return an appropriate response
+			continue
+		}
+
 		entry := response.RecipeEntry{
 			RecipeId:   recipe.RecipeID,
 			Categories: response.CategoryInfo{CategoryId: recipe.CategoryID, CategoryName: categoryName},
 			Levels:     response.LevelInfo{LevelId: recipe.LevelID, LevelName: levelName},
 			RecipeName: recipe.RecipeName,
-			ImageUrl:   getMinioURL(recipe.ImageFilename),
+			ImageUrl:   imageUrl,
 			Time:       recipe.TimeCook,
 			IsFavorite: false, // You need to set this based on your logic
 		}
@@ -184,13 +198,11 @@ func getLevelName(levelID int) (string, error) {
 	return level.LevelName, nil
 }
 
-func getMinioURL(filename string) string {
-	minioEndpoint := "https://minio.cloudias79.com"
-	bucketName := "talent79-dev"
+func getImageURL(minioClient *minio.Client, filename string) (string, error) {
+	url, err := config.GetPublicLink(minioClient, filename)
+	if err != nil {
+		return "", err
+	}
 
-	// Membentuk URL Minio berdasarkan pola
-	minioURL := fmt.Sprintf("%s/%s/%s?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=talent79%%2F20240123%%2Fus-east-1%%2Fs3%%2Faws4_request&X-Amz-Date=20240123T083117Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=d22ba675e8edd3ac9b0093d3a78f2134f82a9afc8e8fd6b4cde5bfc1c43b980e",
-		minioEndpoint, bucketName, filename)
-
-	return minioURL
+	return url, nil
 }
