@@ -1,7 +1,6 @@
 package config
 
 import (
-	"book-recipe-be-go/models"
 	"fmt"
 	"os"
 	"strconv"
@@ -37,7 +36,6 @@ func Connect() {
         panic(err)
     }
 
-	db.AutoMigrate(&models.User{})
 	DB = db
 }
 
