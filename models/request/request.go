@@ -10,3 +10,8 @@ type RegisterRequest struct {
 type ToggleFavoriteRequest struct {
 	UserId       uint `json:"userId" binding:"required"`
 }
+
+type SignInRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
