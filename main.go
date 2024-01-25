@@ -22,7 +22,7 @@ func main() {
     {
         // Define user-related routes using the UserRoutes function from the routes package
         routes.UserRoutes(apiGroup)
-        
+        routes.RecipeRoutes(apiGroup)
     }
 
     // Run the server on port 8080

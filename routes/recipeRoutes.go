@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RecipeRoutes(router *gin.Engine) {
-	router.GET("/book-recipe/book-recipes", controllers.GetAllRecipes)
-	router.PUT("/book-recipe/book-recipes/:recipeId/favorites", controllers.ToggleFavorite)
+func RecipeRoutes(apiGroup *gin.RouterGroup) {
+	apiGroup.GET("/book-recipe/book-recipes", controllers.GetAllRecipes)
+	apiGroup.PUT("/book-recipe/book-recipes/:recipeId/favorites", controllers.ToggleFavorite)
 }
