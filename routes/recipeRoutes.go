@@ -8,5 +8,6 @@ import (
 
 func RecipeRoutes(apiGroup *gin.RouterGroup) {
 	apiGroup.GET("/book-recipe/book-recipes", controllers.GetAllRecipes)
+	apiGroup.POST("/book-recipe/book-recipes", controllers.CreateRecipe)
 	apiGroup.PUT("/book-recipe/book-recipes/:recipeId/favorites", controllers.ToggleFavorite)
 }

@@ -24,9 +24,23 @@ type RecipeEntry struct {
 	IsFavorite bool         `json:"isFavorite"`
 }
 
+type CategoryListResponse struct {
+	Data       []CategoryInfo `json:"data"`
+	Message    string        `json:"message"`
+	StatusCode int           `json:"statusCode"`
+	Status     string        `json:"status"`
+}
+
 type CategoryInfo struct {
 	CategoryId   int    `json:"categoryId"`
 	CategoryName string `json:"categoryName"`
+}
+
+type LevelListResponse struct {
+	Data       []LevelInfo `json:"data"`
+	Message    string        `json:"message"`
+	StatusCode int           `json:"statusCode"`
+	Status     string        `json:"status"`
 }
 
 type LevelInfo struct {

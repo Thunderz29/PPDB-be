@@ -1,5 +1,7 @@
 package request
 
+import "book-recipe-be-go/models/response"
+
 type RegisterRequest struct {
 	Username       string `json:"username" binding:"required"`
 	Fullname       string `json:"fullname" binding:"required"`
@@ -14,4 +16,14 @@ type ToggleFavoriteRequest struct {
 type SignInRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+type CreateRecipeRequest struct {
+	UserId      int              `json:"userId" binding:"required"`
+	RecipeName  string           `json:"recipeName" binding:"required"`
+	Categories  response.CategoryInfo `json:"categories" binding:"required"`
+	Levels      response.LevelInfo    `json:"levels" binding:"required"`
+	TimeCook    int              `json:"timeCook" binding:"required"`
+	Ingridient  string           `json:"ingridient" binding:"required"`
+	HowToCook   string           `json:"howToCook" binding:"required"`
 }

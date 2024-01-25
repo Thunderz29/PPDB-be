@@ -12,3 +12,11 @@ func GetFullnameByUserID(userID uint) (string, error) {
 	}
 	return user.Fullname, nil
 }
+
+func GetusernameByUserID(userID uint) (string, error) {
+	var user models.User
+	if err := config.DB.Model(&models.User{}).Where("user_id = ?", userID).First(&user).Error; err != nil {
+		return "", err
+	}
+	return user.Username, nil
+}

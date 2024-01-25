@@ -1,0 +1,40 @@
+package controllers
+
+import (
+	"book-recipe-be-go/config"
+	"book-recipe-be-go/models"
+	"book-recipe-be-go/models/response"
+	"github.com/gin-gonic/gin"
+	"net/http"
+)
+
+// GetAllCategories mengembalikan semua kategori dengan hanya categoryId dan categoryName
+func GetAllCategories(c *gin.Context) {
+	var categories []models.Category
+	result := config.DB.Select("category_id, category_name").Find(&categories)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, response.CategoryListResponse{
+			Message:    "Terjadi kesalahan server. Silakan coba kembali",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		})
+		return
+	}
+
+	// Mengonversi model Category ke CategoryInfo dalam respons
+	var categoryInfos []response.CategoryInfo
+	for _, category := range categories {
+		categoryInfos = append(categoryInfos, response.CategoryInfo{
+			CategoryId:   category.CategoryID,
+			CategoryName: category.CategoryName,
+		})
+	}
+
+	c.JSON(http.StatusOK, response.CategoryListResponse{
+		Data:       categoryInfos,
+		Message:    "Pesan Sukses",
+		StatusCode: http.StatusOK,
+		Status:     "Success",
+	})
+}
