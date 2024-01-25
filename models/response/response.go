@@ -14,6 +14,14 @@ type DataResponse struct {
 	Status     string `json:"status"`
 }
 
+type RecipeDetailsResponse struct {
+	Total int64         `json:"total"`
+	Data  interface{} `json:"data"`
+	Message     string `json:"message"`
+	StatusCode int    `json:"statusCode"`
+	Status     string `json:"status"`
+}
+
 type RecipeEntry struct {
 	RecipeId   int    `json:"recipeId"`
 	Categories CategoryInfo `json:"categories"`
@@ -21,6 +29,18 @@ type RecipeEntry struct {
 	RecipeName string       `json:"recipeName"`
 	ImageUrl   string       `json:"imageUrl"`
 	Time       *int          `json:"time"`
+	IsFavorite bool         `json:"isFavorite"`
+}
+
+type RecipeDetailsEntry struct {
+	RecipeId   int    `json:"recipeId"`
+	Categories CategoryInfo `json:"categories"`
+	Levels     LevelInfo    `json:"levels"`
+	RecipeName string       `json:"recipeName"`
+	ImageFilename   string       `json:"imageFilename"`
+	TimeCook       *int          `json:"timeCook"`
+	Ingridient   string       `json:"ingridient"`
+	HowToCook   string       `json:"howToCook"`
 	IsFavorite bool         `json:"isFavorite"`
 }
 

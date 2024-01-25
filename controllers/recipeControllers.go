@@ -138,6 +138,120 @@ func ToggleFavorite(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func GetRecipeDetailsById(c *gin.Context){
+	recipeID := c.Param("recipeId")
+	var recipeDetails models.Recipe
+	var total int64
+	
+	minioClient, err := config.ConfigMinio()
+    if err != nil {
+        log.Fatalln(err)
+        return
+    }
+
+	recipeIDInt, _ := strconv.Atoi(recipeID)
+
+	// Mendapatkan token dari header HTTP
+	tokenString := c.GetHeader("Authorization")
+	if tokenString == "" {
+		response := response.DataResponse{
+			Total:      0,
+			Data:       nil,
+			Message:    "Token tidak ditemukan",
+			StatusCode: http.StatusUnauthorized,
+			Status:     "Unauthorized",
+		}
+		c.JSON(http.StatusUnauthorized, response)
+		return
+	}
+
+	// Men-decode token untuk mendapatkan informasi pengguna
+	userId, err := utils.GetUserIdFromToken(tokenString)
+	if err != nil {
+		response := response.DataResponse{
+			Total:      0,
+			Data:       nil,
+			Message:    "Token tidak valid",
+			StatusCode: http.StatusUnauthorized,
+			Status:     "Unauthorized",
+		}
+		c.JSON(http.StatusUnauthorized, response)
+		return
+	}
+
+	// Menggunakan Joins untuk mengambil data dari tabel levels dan categories
+	db := config.DB.Model(&models.Recipe{})
+	if err := db.
+		Preload("Category").
+		Preload("Level").
+		Where("recipe_id = ?", recipeIDInt).
+		Count(&total).
+		Find(&recipeDetails).Error; err != nil {
+		response := response.DataResponse{
+			Total: 0,
+			Data: nil,
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	if(total == 0){
+		response := response.RecipeDetailsResponse{
+            Total:      0,
+			Data: nil,
+            Message:    "Detil Resep masakan tidak tersedia",
+            StatusCode: http.StatusNotFound,
+            Status:     "Not Found",
+        }
+        c.JSON(http.StatusNotFound, response)
+        return
+	}
+
+	categoryName, err := utils.GetCategoryName(recipeDetails.Category.CategoryID)
+	if err != nil {
+		log.Println("Error fetching category name:", err)
+		categoryName = "Unknown Category"
+	}
+
+	levelName, err := utils.GetLevelName(recipeDetails.Level.LevelID)
+	if err != nil {
+		log.Println("Error fetching level name:", err)
+		levelName = "Unknown Level"
+	}
+
+	imageUrl, err := utils.GetImageURL(minioClient, recipeDetails.ImageFilename)
+	if err != nil {
+		log.Println("Error getting image URL:", err)
+	}
+
+	isFavorite := utils.CheckFavoriteRecipe(uint(userId), recipeIDInt)
+
+	// Modify the response mapping
+	data := response.RecipeDetailsEntry{
+		RecipeId:   recipeDetails.RecipeID,
+		Categories: response.CategoryInfo{CategoryId: recipeDetails.CategoryID, CategoryName: categoryName},
+		Levels:     response.LevelInfo{LevelId: recipeDetails.LevelID, LevelName: levelName},
+		RecipeName: recipeDetails.RecipeName,
+		ImageFilename:   imageUrl,
+		TimeCook:       recipeDetails.TimeCook,
+		Ingridient: recipeDetails.Ingridient,
+		HowToCook: recipeDetails.HowToCook,
+		IsFavorite: isFavorite,
+	}
+
+	response := response.RecipeDetailsResponse{
+		Total:      total,
+		Data:       data,
+		Message:    "Berhasil memuat Resep Masakan",
+		StatusCode: http.StatusOK,
+		Status:     "Success",
+	}
+	c.JSON(http.StatusOK, response)
+}
+
 func GetAllRecipes(c *gin.Context) {
 	var recipes []models.Recipe
 	var total int64
@@ -181,8 +295,9 @@ func GetAllRecipes(c *gin.Context) {
 		return
 	}
 
-	// Filter by recipe name
 	db := config.DB.Model(&models.Recipe{})
+
+	// Filter by recipe name
 	if recipeName != "" {
 		db = db.Where("recipe_name LIKE ?", "%"+recipeName+"%")
 	}
@@ -323,7 +438,7 @@ func GetAllRecipes(c *gin.Context) {
 	response := response.DataResponse{
 		Total:      total,
 		Data:       recipeEntries,
-		Message:    "Berhasil memuat Resep Masakan Saya!",
+		Message:    "Berhasil memuat Resep Masakan",
 		StatusCode: http.StatusOK,
 		Status:     "Success",
 	}
