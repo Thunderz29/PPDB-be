@@ -314,24 +314,47 @@ func GetAllRecipes(c *gin.Context) {
 
 	// Filter by time cook
 	if time != "" {
-		timeCookInt, err := strconv.Atoi(time)
+		if time == "60" {
+			// Jika waktu adalah '60', cari resep dengan waktu memasak tepat 60
+			db = db.Where("time_cook > ?", 60)
+		} else {
+			// Jika waktu tidak sama dengan '60', lakukan pemrosesan seperti sebelumnya
+			timeCookRange := strings.Split(time, "-")
+			if len(timeCookRange) == 2 {
+				minTimeCook, err := strconv.Atoi(timeCookRange[0])
+				maxTimeCook, err := strconv.Atoi(timeCookRange[1])
 
-		if err != nil {
-			response := response.MessageResponse{
-				Message:    err.Error(),
-				StatusCode: http.StatusBadRequest,
-				Status:     "ERROR",
+				if err != nil {
+					response := response.MessageResponse{
+						Message:    err.Error(),
+						StatusCode: http.StatusBadRequest,
+						Status:     "ERROR",
+					}
+					c.JSON(http.StatusBadRequest, response)
+					return
+				}
+
+				if minTimeCook >= 0 && maxTimeCook > minTimeCook {
+					db = db.Where("time_cook >= ? AND time_cook <= ?", minTimeCook, maxTimeCook)
+				} else {
+					response := response.MessageResponse{
+						Message:    "Invalid time cook range",
+						StatusCode: http.StatusBadRequest,
+						Status:     "ERROR",
+					}
+					c.JSON(http.StatusBadRequest, response)
+					return
+				}
+			} else {
+				response := response.MessageResponse{
+					Message:    "Invalid time cook format",
+					StatusCode: http.StatusBadRequest,
+					Status:     "ERROR",
+				}
+				c.JSON(http.StatusBadRequest, response)
+				return
 			}
-			c.JSON(http.StatusBadRequest, response)
-			return
 		}
-
-		if timeCookInt <= 30 {
-			db = db.Where("time_cook <= ?", timeCookInt)
-		} else if timeCookInt > 30 && timeCookInt <= 60 {
-			db = db.Where("time_cook > 30 AND time_cook <= ?", timeCookInt)
-		}
-
 	}
 
 	// Menentukan pengurutan berdasarkan sortBy
