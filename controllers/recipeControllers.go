@@ -8,6 +8,7 @@ import (
 	"book-recipe-be-go/utils"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -29,17 +30,56 @@ func CreateRecipe(c *gin.Context) {
         return
     }
 	// Baca data dari form-data
+		var requestJSON string
+	if val, err := c.FormFile("request"); err == nil {
+		// Jika terdapat file dengan nama "request"
+		fileData, err := val.Open()
+		if err != nil {
+			log.Println("Error reading JSON file from form-data:", err)
+			response := response.MessageResponse{
+				Message:    "Error reading JSON file from form-data",
+				StatusCode: http.StatusBadRequest,
+				Status:     "ERROR",
+			}
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+		defer fileData.Close()
+
+		// Membaca isi file JSON
+		jsonBytes, err := io.ReadAll(fileData)
+		if err != nil {
+			log.Println("Error reading JSON from form-data:", err)
+			response := response.MessageResponse{
+				Message:    "Error reading JSON from form-data",
+				StatusCode: http.StatusBadRequest,
+				Status:     "ERROR",
+			}
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+
+		requestJSON = string(jsonBytes)
+	} else {
+		// Jika tidak terdapat file dengan nama "request"
+		requestJSON = c.PostForm("request")
+	}
+
+	// Log requestJSON
+	log.Println("Received JSON request:", requestJSON)
+
+	// Menguraikan data JSON menjadi struct atau model yang sesuai
 	var request request.CreateRecipeRequest
-    jsonStr := c.PostForm("request")
-    if err := json.Unmarshal([]byte(jsonStr), &request); err != nil {
-        response := response.MessageResponse{
-            Message:    "Error parsing JSON from form-data",
-            StatusCode: http.StatusBadRequest,
-            Status:     "ERROR",
-        }
-        c.JSON(http.StatusBadRequest, response)
-        return
-    }
+	if err := json.Unmarshal([]byte(requestJSON), &request); err != nil {
+		log.Println("Error parsing JSON from form-data:", err)
+		response := response.MessageResponse{
+			Message:    "Error parsing JSON from form-data",
+			StatusCode: http.StatusBadRequest,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
 
 	// Mapping data ke model Recipe
 	categories := models.Category{
@@ -112,6 +152,112 @@ func CreateRecipe(c *gin.Context) {
 		Status:     "OK",
 	})
 }
+
+func UpdateRecipe(c *gin.Context) {
+	// Baca data dari form-data
+	file, err := c.FormFile("file")
+	if err != nil {
+		response := response.MessageResponse{
+			Message:    "Error reading file from form-data",
+			StatusCode: http.StatusBadRequest,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	// Baca data dari JSON form-data
+	var request request.UpdateRecipeRequest
+    jsonStr := c.PostForm("request")
+    if err := json.Unmarshal([]byte(jsonStr), &request); err != nil {
+        response := response.MessageResponse{
+            Message:    "Error parsing JSON from form-data",
+            StatusCode: http.StatusBadRequest,
+            Status:     "ERROR",
+        }
+        c.JSON(http.StatusBadRequest, response)
+        return
+    }
+
+	// Dapatkan informasi user berdasarkan ID
+	username, err := utils.GetusernameByUserID(uint(request.UserID))
+	if err != nil {
+		response := response.MessageResponse{
+			Message:    "Error getting user information",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	// Cek apakah resep dengan recipeId tersebut ada dan milik user dengan userId yang sesuai
+	existingRecipe := models.Recipe{}
+	if err := config.DB.Where("recipe_id = ? AND user_id = ?", request.RecipeID, request.UserID).First(&existingRecipe).Error; err != nil {
+		// Handle the error (e.g., recipe not found or not owned by the user)
+		response := response.MessageResponse{
+			Message:    "Recipe not found or unauthorized",
+			StatusCode: http.StatusNotFound,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusNotFound, response)
+		return
+	}
+
+	// Mapping data ke model Recipe
+	categories := models.Category{
+		CategoryID:   request.Categories.CategoryId,
+		CategoryName: request.Categories.CategoryName,
+	}
+
+	levels := models.Level{
+		LevelID:   request.Levels.LevelId,
+		LevelName: request.Levels.LevelName,
+	}
+
+	// Upload gambar ke Minio
+	imageFilename, err := config.UploadFileToMinio(file, &request)
+	if err != nil {
+		response := response.MessageResponse{
+			Message:    "Error uploading image to Minio",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	// Update data resep
+	existingRecipe.Category = categories
+	existingRecipe.Level = levels
+	existingRecipe.RecipeName = request.RecipeName
+	existingRecipe.ImageFilename = imageFilename
+	existingRecipe.TimeCook = &request.TimeCook
+	existingRecipe.Ingridient = request.Ingridient
+	existingRecipe.HowToCook = request.HowToCook
+	existingRecipe.ModifiedBy = username
+	existingRecipe.ModifiedTime = time.Now()
+
+	// Simpan perubahan ke database
+	if err := config.DB.Save(&existingRecipe).Error; err != nil {
+		response := response.MessageResponse{
+			Message:    "Terjadi kesalahan server. Silakan coba kembali",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	// Respons berhasil
+	responseMessage := "Resep " + request.RecipeName + " berhasil diperbarui!"
+	c.JSON(http.StatusOK, response.MessageResponse{
+		Message:    responseMessage,
+		StatusCode: http.StatusOK,
+		Status:     "OK",
+	})
+}
+
 
 func ToggleFavorite(c *gin.Context) {
 	recipeID := c.Param("recipeId")
