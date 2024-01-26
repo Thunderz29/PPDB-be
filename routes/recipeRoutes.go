@@ -11,4 +11,6 @@ func RecipeRoutes(apiGroup *gin.RouterGroup) {
 	apiGroup.POST("/book-recipe/book-recipes", controllers.CreateRecipe)
 	apiGroup.PUT("/book-recipe/book-recipes/:recipeId/favorites", controllers.ToggleFavorite)
 	apiGroup.GET("/book-recipe/book-recipes/:recipeId", controllers.GetRecipeDetailsById)
+	apiGroup.GET("/book-recipe/my-recipes", controllers.GetAllMyRecipes)
+	apiGroup.PUT("/book-recipe/book-recipes/:recipeId", controllers.DeleteMyRecipe)
 }

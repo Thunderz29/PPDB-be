@@ -7,7 +7,8 @@ import (
 	"book-recipe-be-go/models/response"
 	"book-recipe-be-go/utils"
 	"encoding/json"
-	"fmt"
+
+	// "fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,29 +18,430 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func DeleteMyRecipe(c *gin.Context) {
+	recipeID := c.Param("recipeId")
+	userID := c.Query("userId")
+	var existingRecipe models.Recipe
+
+	recipeIDInt, err := strconv.Atoi(recipeID)
+	if err != nil {
+		response := response.MyRecipeResponse{
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusInternalServerError,
+			Details:    err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	userIDInt, err := strconv.Atoi(userID)
+	if err != nil {
+		response := response.MyRecipeResponse{
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusInternalServerError,
+			Details:    err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	recipeName, err := utils.GetRecipeNameByRecipeID(recipeIDInt)
+	if err != nil {
+		response := response.DataResponse{
+			Total:      0,
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	err = config.DB.Where("recipe_id = ? AND user_id = ? AND is_deleted = ?", recipeIDInt, userIDInt, false).First(&existingRecipe).Error
+	if err != nil {
+		response := response.MyRecipeResponse{
+			Message:    "Data Already Deleted!",
+			StatusCode: http.StatusBadRequest,
+			Details: recipeName + " sudah terhapus!",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	err = config.DB.Model(&models.Recipe{}).
+		Where("recipe_id = ? AND user_id = ?", recipeIDInt, userIDInt).Update("is_deleted", true).Error
+	if err != nil {
+		response := response.MyRecipeResponse{
+			Message:    "Terjadi kesalahan saat menghapus data.",
+			StatusCode: http.StatusInternalServerError,
+			Details:    err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	response := response.RecipeDetailsResponse{
+		Total: 1,
+		Data: nil,
+		Message:    "Resep " + recipeName + " berhasil dihapus!",
+		StatusCode: http.StatusOK,
+		Status: "OK",
+	}
+	c.JSON(http.StatusOK, response)
+
+}
+
+func GetAllMyRecipes(c *gin.Context) {
+	var recipes []models.Recipe
+	var recipeFilter request.RecipeFilter
+	var total int64
+
+	minioClient, err := config.ConfigMinio()
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
+
+	if err := c.ShouldBindQuery(&recipeFilter); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Mengonversi nilai string ke integer
+	pageNumberInt, _ := strconv.Atoi(recipeFilter.PageNumber)
+	pageSizeInt, _ := strconv.Atoi(recipeFilter.PageSize)
+
+	// Menetapkan nilai default jika tidak ada nilai atau nilai tidak valid
+	if pageNumberInt <= 0 {
+		pageNumberInt = 1
+	}
+
+	if pageSizeInt <= 0 {
+		pageSizeInt = 10 // Atur ke ukuran halaman default
+	}
+
+	if recipeFilter.UserID == "" {
+		response := response.MyRecipeResponse{
+			Message:    "User tidak valid",
+			StatusCode: http.StatusUnauthorized,
+			Details:    "Unauthorized",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	db := config.DB.Model(&models.Recipe{})
+
+	// Apply filters
+	db = utils.ApplyRecipeFilters(db, &recipeFilter)
+
+	// Filter by time cook
+	if recipeFilter.Time != "" {
+		timeCookInt, err := strconv.Atoi(recipeFilter.Time)
+
+		if err != nil {
+			response := response.MyRecipeResponse{
+				Message:    "Parameter time harus berupa angka",
+				StatusCode: http.StatusBadRequest,
+				Details:    "Bad Request",
+			}
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+
+		if timeCookInt <= 30 {
+			db = db.Where("time_cook <= ?", timeCookInt)
+		} else if timeCookInt > 30 && timeCookInt <= 60 {
+			db = db.Where("time_cook > 30 AND time_cook <= ?", timeCookInt)
+		} else if timeCookInt > 60 {
+			db = db.Where("time_cook > 60 AND time_cook <= ?", timeCookInt)
+		}
+
+	}
+
+	userIDInt, err := strconv.Atoi(recipeFilter.UserID)
+	if err != nil {
+		response := response.MyRecipeResponse{
+			Message:    err.Error(),
+			StatusCode: http.StatusBadRequest,
+			Details:    "Bad Request",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	// Menggunakan Joins untuk mengambil data dari tabel levels dan categories
+	if err := db.
+		Preload("Category").
+		Preload("Level").
+		Where("user_id = ?", userIDInt).
+		Order("LOWER(recipe_name) ASC").
+		Where("is_deleted = ?", false).
+		Count(&total).
+		Limit(pageSizeInt).Offset((pageNumberInt - 1) * pageSizeInt).
+		Find(&recipes).Error; err != nil {
+		response := response.MessageResponse{
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	// Modify the response mapping
+	var recipeEntries []response.RecipeEntry
+	for _, recipe := range recipes {
+		categoryName, err := utils.GetCategoryName(recipe.Category.CategoryID)
+		if err != nil {
+			log.Println("Error fetching category name:", err)
+			categoryName = "Unknown Category"
+		}
+
+		levelName, err := utils.GetLevelName(recipe.Level.LevelID)
+		if err != nil {
+			log.Println("Error fetching level name:", err)
+			levelName = "Unknown Level"
+		}
+
+		imageUrl, err := utils.GetImageURL(minioClient, recipe.ImageFilename)
+		if err != nil {
+			log.Println("Error getting image URL:", err)
+			continue
+		}
+
+		isFavorite := utils.CheckFavoriteRecipe(uint(userIDInt), recipe.RecipeID)
+
+		entry := response.RecipeEntry{
+			RecipeId:   recipe.RecipeID,
+			Categories: response.CategoryInfo{CategoryId: recipe.CategoryID, CategoryName: categoryName},
+			Levels:     response.LevelInfo{LevelId: recipe.LevelID, LevelName: levelName},
+			RecipeName: recipe.RecipeName,
+			ImageUrl:   imageUrl,
+			Time:       recipe.TimeCook,
+			IsFavorite: isFavorite,
+		}
+
+		recipeEntries = append(recipeEntries, entry)
+	}
+
+	if len(recipeEntries) == 0 {
+		response := response.MyRecipeResponse{
+			Message:    "Resep masakan tidak tersedia",
+			StatusCode: http.StatusNotFound,
+			Details:    "Data tidak ditemukan!",
+		}
+		c.JSON(http.StatusNotFound, response)
+		return
+	}
+
+	response := response.DataResponse{
+		Total:      total,
+		Data:       recipeEntries,
+		Message:    "Berhasil memuat Resep Masakan Saya",
+		StatusCode: http.StatusOK,
+		Status:     "OK",
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+func GetAllRecipes(c *gin.Context) {
+	var recipes []models.Recipe
+	var recipeFilter request.RecipeFilter
+	var total int64
+
+	minioClient, err := config.ConfigMinio()
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
+
+	if err := c.ShouldBindQuery(&recipeFilter); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Mengonversi nilai string ke integer
+	pageNumberInt, _ := strconv.Atoi(recipeFilter.PageNumber)
+	pageSizeInt, _ := strconv.Atoi(recipeFilter.PageSize)
+
+	// Menetapkan nilai default jika tidak ada nilai atau nilai tidak valid
+	if pageNumberInt <= 0 {
+		pageNumberInt = 1
+	}
+
+	if pageSizeInt <= 0 {
+		pageSizeInt = 10 // Atur ke ukuran halaman default
+	}
+
+	if recipeFilter.UserID == "" {
+		response := response.MessageResponse{
+			Message:    "User tidak valid",
+			StatusCode: http.StatusUnauthorized,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	db := config.DB.Model(&models.Recipe{})
+
+	// Apply filters
+	db = utils.ApplyRecipeFilters(db, &recipeFilter)
+
+	// Filter by time cook
+	if recipeFilter.Time != "" {
+		if recipeFilter.Time == "60" {
+			// Jika waktu adalah '60', cari resep dengan waktu memasak tepat 60
+			db = db.Where("time_cook > ?", 60)
+		} else {
+			// Jika waktu tidak sama dengan '60', lakukan pemrosesan seperti sebelumnya
+			timeCookRange := strings.Split(recipeFilter.Time, "-")
+			if len(timeCookRange) == 2 {
+				minTimeCook, err := strconv.Atoi(timeCookRange[0])
+				maxTimeCook, err := strconv.Atoi(timeCookRange[1])
+
+				if err != nil {
+					response := response.MessageResponse{
+						Message:    err.Error(),
+						StatusCode: http.StatusBadRequest,
+						Status:     "ERROR",
+					}
+					c.JSON(http.StatusBadRequest, response)
+					return
+				}
+
+				if minTimeCook >= 0 && maxTimeCook > minTimeCook {
+					db = db.Where("time_cook >= ? AND time_cook <= ?", minTimeCook, maxTimeCook)
+				} else {
+					response := response.MessageResponse{
+						Message:    "Invalid time cook range",
+						StatusCode: http.StatusBadRequest,
+						Status:     "ERROR",
+					}
+					c.JSON(http.StatusBadRequest, response)
+					return
+				}
+			} else {
+				response := response.MessageResponse{
+					Message:    "Invalid time cook format",
+					StatusCode: http.StatusBadRequest,
+					Status:     "ERROR",
+				}
+				c.JSON(http.StatusBadRequest, response)
+				return
+			}
+		}
+	}
+
+	// Menggunakan Joins untuk mengambil data dari tabel levels dan categories
+	if err := db.
+		Preload("Category").
+		Preload("Level").
+		Order("LOWER(recipe_name) ASC").
+		Where("is_deleted = ?", false).
+		Count(&total).
+		Limit(pageSizeInt).Offset((pageNumberInt - 1) * pageSizeInt).
+		Find(&recipes).Error; err != nil {
+		response := response.MessageResponse{
+			Message:    "Terjadi kesalahan saat mengambil data resep",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	// Modify the response mapping
+	var recipeEntries []response.RecipeEntry
+	for _, recipe := range recipes {
+		categoryName, err := utils.GetCategoryName(recipe.Category.CategoryID)
+		if err != nil {
+			log.Println("Error fetching category name:", err)
+			categoryName = "Unknown Category"
+		}
+
+		levelName, err := utils.GetLevelName(recipe.Level.LevelID)
+		if err != nil {
+			log.Println("Error fetching level name:", err)
+			levelName = "Unknown Level"
+		}
+
+		imageUrl, err := utils.GetImageURL(minioClient, recipe.ImageFilename)
+		if err != nil {
+			log.Println("Error getting image URL:", err)
+			continue
+		}
+
+		userIDInt, err := strconv.Atoi(recipeFilter.UserID)
+		if err != nil {
+			response := response.MessageResponse{
+				Message:    err.Error(),
+				StatusCode: http.StatusBadRequest,
+				Status:     "ERROR",
+			}
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+
+		isFavorite := utils.CheckFavoriteRecipe(uint(userIDInt), recipe.RecipeID)
+
+		entry := response.RecipeEntry{
+			RecipeId:   recipe.RecipeID,
+			Categories: response.CategoryInfo{CategoryId: recipe.CategoryID, CategoryName: categoryName},
+			Levels:     response.LevelInfo{LevelId: recipe.LevelID, LevelName: levelName},
+			RecipeName: recipe.RecipeName,
+			ImageUrl:   imageUrl,
+			Time:       recipe.TimeCook,
+			IsFavorite: isFavorite,
+		}
+
+		recipeEntries = append(recipeEntries, entry)
+	}
+
+	if len(recipeEntries) == 0 {
+		response := response.MessageResponse{
+			Message:    "Resep masakan tidak tersedia",
+			StatusCode: http.StatusNotFound,
+			Status:     "OK",
+		}
+		c.JSON(http.StatusNotFound, response)
+		return
+	}
+
+	response := response.DataResponse{
+		Total:      total,
+		Data:       recipeEntries,
+		Message:    "Berhasil memuat Resep Masakan",
+		StatusCode: http.StatusOK,
+		Status:     "Success",
+	}
+	c.JSON(http.StatusOK, response)
+}
+
 func CreateRecipe(c *gin.Context) {
 	file, err := c.FormFile("file")
-    if err != nil {
-        response := response.MessageResponse{
-            Message:    "Error reading file from form-data",
-            StatusCode: http.StatusBadRequest,
-            Status:     "ERROR",
-        }
-        c.JSON(http.StatusBadRequest, response)
-        return
-    }
+	if err != nil {
+		response := response.MessageResponse{
+			Message:    "Error reading file from form-data",
+			StatusCode: http.StatusBadRequest,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
 	// Baca data dari form-data
 	var request request.CreateRecipeRequest
-    jsonStr := c.PostForm("request")
-    if err := json.Unmarshal([]byte(jsonStr), &request); err != nil {
-        response := response.MessageResponse{
-            Message:    "Error parsing JSON from form-data",
-            StatusCode: http.StatusBadRequest,
-            Status:     "ERROR",
-        }
-        c.JSON(http.StatusBadRequest, response)
-        return
-    }
+	jsonStr := c.PostForm("request")
+	if err := json.Unmarshal([]byte(jsonStr), &request); err != nil {
+		response := response.MessageResponse{
+			Message:    "Error parsing JSON from form-data",
+			StatusCode: http.StatusBadRequest,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
 
 	// Mapping data ke model Recipe
 	categories := models.Category{
@@ -63,7 +465,6 @@ func CreateRecipe(c *gin.Context) {
 		return
 	}
 
-
 	imageFilename, err := config.UploadFileToMinio(file, &request)
 	if err != nil {
 		response := response.MessageResponse{
@@ -85,14 +486,13 @@ func CreateRecipe(c *gin.Context) {
 		Ingridient:    request.Ingridient,
 		HowToCook:     request.HowToCook,
 		IsDeleted:     false,
-		CreatedBy:     username, 
+		CreatedBy:     username,
 		CreatedTime:   time.Now(),
-		ModifiedBy:    username, 
+		ModifiedBy:    username,
 		ModifiedTime:  time.Now(),
 		Category:      categories,
 		Level:         levels,
 	}
-
 
 	if err := config.DB.Create(&recipe).Error; err != nil {
 		response := response.MessageResponse{
@@ -144,8 +544,8 @@ func ToggleFavorite(c *gin.Context) {
 	recipeIDInt, err := strconv.Atoi(recipeID)
 	if err != nil {
 		response := response.DataResponse{
-			Total: 0,
-			Data: nil,
+			Total:      0,
+			Data:       nil,
 			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
 			StatusCode: http.StatusBadRequest,
 			Status:     "ERROR",
@@ -158,7 +558,7 @@ func ToggleFavorite(c *gin.Context) {
 	recipeName, err := utils.GetRecipeNameByRecipeID(recipeIDInt)
 	if err != nil {
 		response := response.DataResponse{
-			Total: 0,
+			Total:      0,
 			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
@@ -177,8 +577,8 @@ func ToggleFavorite(c *gin.Context) {
 
 		if err := config.DB.Save(&favoriteFood).Error; err != nil {
 			response := response.DataResponse{
-				Total: 0,
-				Data: nil,
+				Total:      0,
+				Data:       nil,
 				Message:    "Terjadi kesalahan server. Silakan coba kembali.",
 				StatusCode: http.StatusInternalServerError,
 				Status:     "ERROR",
@@ -193,8 +593,8 @@ func ToggleFavorite(c *gin.Context) {
 		}
 
 		response := response.DataResponse{
-			Total: 1,
-			Data: nil,
+			Total:      1,
+			Data:       nil,
 			Message:    message,
 			StatusCode: http.StatusOK,
 			Status:     "OK",
@@ -215,8 +615,8 @@ func ToggleFavorite(c *gin.Context) {
 
 	if err := config.DB.Create(&newFavorite).Error; err != nil {
 		response := response.DataResponse{
-			Total: 0,
-			Data: nil,
+			Total:      0,
+			Data:       nil,
 			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
@@ -226,25 +626,25 @@ func ToggleFavorite(c *gin.Context) {
 	}
 
 	response := response.DataResponse{
-		Total: 1,
-		Data: nil,
-		Message:    "Resep " + recipeName + "berhasil ditambahkan ke dalam favorit",
+		Total:      1,
+		Data:       nil,
+		Message:    "Resep " + recipeName + " berhasil ditambahkan ke dalam favorit",
 		StatusCode: http.StatusOK,
 		Status:     "OK",
 	}
 	c.JSON(http.StatusOK, response)
 }
 
-func GetRecipeDetailsById(c *gin.Context){
+func GetRecipeDetailsById(c *gin.Context) {
 	recipeID := c.Param("recipeId")
 	var recipeDetails models.Recipe
 	var total int64
-	
+
 	minioClient, err := config.ConfigMinio()
-    if err != nil {
-        log.Fatalln(err)
-        return
-    }
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
 
 	recipeIDInt, _ := strconv.Atoi(recipeID)
 
@@ -285,8 +685,8 @@ func GetRecipeDetailsById(c *gin.Context){
 		Count(&total).
 		Find(&recipeDetails).Error; err != nil {
 		response := response.DataResponse{
-			Total: 0,
-			Data: nil,
+			Total:      0,
+			Data:       nil,
 			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
@@ -295,16 +695,16 @@ func GetRecipeDetailsById(c *gin.Context){
 		return
 	}
 
-	if(total == 0){
+	if total == 0 {
 		response := response.RecipeDetailsResponse{
-            Total:      0,
-			Data: nil,
-            Message:    "Detil Resep masakan tidak tersedia",
-            StatusCode: http.StatusNotFound,
-            Status:     "Not Found",
-        }
-        c.JSON(http.StatusNotFound, response)
-        return
+			Total:      0,
+			Data:       nil,
+			Message:    "Detil Resep masakan tidak tersedia",
+			StatusCode: http.StatusNotFound,
+			Status:     "Not Found",
+		}
+		c.JSON(http.StatusNotFound, response)
+		return
 	}
 
 	categoryName, err := utils.GetCategoryName(recipeDetails.Category.CategoryID)
@@ -328,236 +728,20 @@ func GetRecipeDetailsById(c *gin.Context){
 
 	// Modify the response mapping
 	data := response.RecipeDetailsEntry{
-		RecipeId:   recipeDetails.RecipeID,
-		Categories: response.CategoryInfo{CategoryId: recipeDetails.CategoryID, CategoryName: categoryName},
-		Levels:     response.LevelInfo{LevelId: recipeDetails.LevelID, LevelName: levelName},
-		RecipeName: recipeDetails.RecipeName,
-		ImageFilename:   imageUrl,
-		TimeCook:       recipeDetails.TimeCook,
-		Ingridient: recipeDetails.Ingridient,
-		HowToCook: recipeDetails.HowToCook,
-		IsFavorite: isFavorite,
+		RecipeId:      recipeDetails.RecipeID,
+		Categories:    response.CategoryInfo{CategoryId: recipeDetails.CategoryID, CategoryName: categoryName},
+		Levels:        response.LevelInfo{LevelId: recipeDetails.LevelID, LevelName: levelName},
+		RecipeName:    recipeDetails.RecipeName,
+		ImageFilename: imageUrl,
+		TimeCook:      recipeDetails.TimeCook,
+		Ingridient:    recipeDetails.Ingridient,
+		HowToCook:     recipeDetails.HowToCook,
+		IsFavorite:    isFavorite,
 	}
 
 	response := response.RecipeDetailsResponse{
 		Total:      total,
 		Data:       data,
-		Message:    "Berhasil memuat Resep Masakan",
-		StatusCode: http.StatusOK,
-		Status:     "Success",
-	}
-	c.JSON(http.StatusOK, response)
-}
-
-func GetAllRecipes(c *gin.Context) {
-	var recipes []models.Recipe
-	var total int64
-
-	minioClient, err := config.ConfigMinio()
-    if err != nil {
-        log.Fatalln(err)
-        return
-    }
-
-	// filter
-	pageNumber := c.DefaultQuery("pageNumber", "1")
-	pageSize := c.DefaultQuery("pageSize", "10")
-	recipeName := c.Query("recipeName")
-	levelID := c.Query("levelId")
-	categoryID := c.Query("categoryId")
-	time := c.Query("time")
-	sortBy := c.DefaultQuery("sortBy", "")
-	userID := c.Query("userId")
-
-	// Mengonversi nilai string ke integer
-	pageNumberInt, _ := strconv.Atoi(pageNumber)
-	pageSizeInt, _ := strconv.Atoi(pageSize)
-
-	// Menetapkan nilai default jika tidak ada nilai atau nilai tidak valid
-	if pageNumberInt <= 0 {
-		pageNumberInt = 1
-	}
-
-	if pageSizeInt <= 0 {
-		pageSizeInt = 10 // Atur ke ukuran halaman default
-	}
-
-	if(userID == ""){
-		response := response.MessageResponse{
-			Message:    "User tidak valid",
-			StatusCode: http.StatusUnauthorized,
-			Status:     "ERROR",
-		}
-		c.JSON(http.StatusBadRequest, response)
-		return
-	}
-
-	db := config.DB.Model(&models.Recipe{})
-
-	// Filter by recipe name
-	if recipeName != "" {
-		db = db.Where("recipe_name LIKE ?", "%"+recipeName+"%")
-	}
-
-	// Filter by level id
-	if levelID != "" {
-		db = db.Where("level_id = ?", levelID)
-	}
-
-	// Filter by category id
-	if categoryID != "" {
-		db = db.Where("category_id = ?", categoryID)
-	}
-
-	// Filter by time cook
-	if time != "" {
-		if time == "60" {
-			// Jika waktu adalah '60', cari resep dengan waktu memasak tepat 60
-			db = db.Where("time_cook > ?", 60)
-		} else {
-			// Jika waktu tidak sama dengan '60', lakukan pemrosesan seperti sebelumnya
-			timeCookRange := strings.Split(time, "-")
-			if len(timeCookRange) == 2 {
-				minTimeCook, err := strconv.Atoi(timeCookRange[0])
-				maxTimeCook, err := strconv.Atoi(timeCookRange[1])
-
-				if err != nil {
-					response := response.MessageResponse{
-						Message:    err.Error(),
-						StatusCode: http.StatusBadRequest,
-						Status:     "ERROR",
-					}
-					c.JSON(http.StatusBadRequest, response)
-					return
-				}
-
-				if minTimeCook >= 0 && maxTimeCook > minTimeCook {
-					db = db.Where("time_cook >= ? AND time_cook <= ?", minTimeCook, maxTimeCook)
-				} else {
-					response := response.MessageResponse{
-						Message:    "Invalid time cook range",
-						StatusCode: http.StatusBadRequest,
-						Status:     "ERROR",
-					}
-					c.JSON(http.StatusBadRequest, response)
-					return
-				}
-			} else {
-				response := response.MessageResponse{
-					Message:    "Invalid time cook format",
-					StatusCode: http.StatusBadRequest,
-					Status:     "ERROR",
-				}
-				c.JSON(http.StatusBadRequest, response)
-				return
-			}
-		}
-	}
-
-	// Menentukan pengurutan berdasarkan sortBy
-	if sortBy != "" {
-		sortColumns := map[string]string{
-			"recipeName": "LOWER(recipe_name)",
-			"timeCook":   "time_cook",
-		}
-
-		sortParams := strings.Split(sortBy, ",")
-		if len(sortParams) == 2 {
-			columnName := sortParams[0]
-			sortDirection := sortParams[1]
-
-			if dbColumn, exists := sortColumns[columnName]; exists {
-				switch sortDirection {
-				case "asc":
-					db = db.Order(fmt.Sprintf("%s ASC", dbColumn))
-				case "desc":
-					db = db.Order(fmt.Sprintf("%s DESC", dbColumn))
-				default:
-					// Jika arah pengurutan tidak valid, gunakan pengurutan default (ASC)
-					db = db.Order(fmt.Sprintf("%s ASC", dbColumn))
-				}
-			}
-		}
-	}
-
-	// Menggunakan Joins untuk mengambil data dari tabel levels dan categories
-	if err := db.
-		Preload("Category").
-		Preload("Level").
-		Order("LOWER(recipe_name) ASC").
-		Where("is_deleted = ?", false).
-		Count(&total).
-		Limit(pageSizeInt).Offset((pageNumberInt - 1) * pageSizeInt).
-		Find(&recipes).Error; err != nil {
-		response := response.MessageResponse{
-			Message:    "Terjadi kesalahan saat mengambil data resep",
-			StatusCode: http.StatusInternalServerError,
-			Status:     "ERROR",
-		}
-		c.JSON(http.StatusInternalServerError, response)
-		return
-	}
-
-	// Modify the response mapping
-	var recipeEntries []response.RecipeEntry
-	for _, recipe := range recipes {
-		categoryName, err := utils.GetCategoryName(recipe.Category.CategoryID)
-		if err != nil {
-			log.Println("Error fetching category name:", err)
-			categoryName = "Unknown Category"
-		}
-
-		levelName, err := utils.GetLevelName(recipe.Level.LevelID)
-		if err != nil {
-			log.Println("Error fetching level name:", err)
-			levelName = "Unknown Level"
-		}
-
-		imageUrl, err := utils.GetImageURL(minioClient, recipe.ImageFilename)
-		if err != nil {
-			log.Println("Error getting image URL:", err)
-			continue
-		}
-
-		userIDInt, err := strconv.Atoi(userID)
-		if err != nil {
-			response := response.MessageResponse{
-				Message:    err.Error(),
-				StatusCode: http.StatusBadRequest,
-				Status:     "ERROR",
-			}
-			c.JSON(http.StatusBadRequest, response)
-			return
-		}
-
-		isFavorite := utils.CheckFavoriteRecipe(uint(userIDInt), recipe.RecipeID)
-
-		entry := response.RecipeEntry{
-			RecipeId:   recipe.RecipeID,
-			Categories: response.CategoryInfo{CategoryId: recipe.CategoryID, CategoryName: categoryName},
-			Levels:     response.LevelInfo{LevelId: recipe.LevelID, LevelName: levelName},
-			RecipeName: recipe.RecipeName,
-			ImageUrl:   imageUrl,
-			Time:       recipe.TimeCook,
-			IsFavorite: isFavorite,
-		}
-
-		recipeEntries = append(recipeEntries, entry)
-	}
-
-	if len(recipeEntries) == 0 {
-		response := response.MessageResponse{
-			Message:    "Resep masakan tidak tersedia",
-			StatusCode: http.StatusNotFound,
-			Status:     "OK",
-		}
-		c.JSON(http.StatusNotFound, response)
-		return
-	}
-	
-	response := response.DataResponse{
-		Total:      total,
-		Data:       recipeEntries,
 		Message:    "Berhasil memuat Resep Masakan",
 		StatusCode: http.StatusOK,
 		Status:     "Success",

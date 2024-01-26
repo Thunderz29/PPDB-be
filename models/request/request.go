@@ -10,7 +10,7 @@ type RegisterRequest struct {
 }
 
 type ToggleFavoriteRequest struct {
-	UserId       uint `json:"userId" binding:"required"`
+	UserId uint `json:"userId" binding:"required"`
 }
 
 type SignInRequest struct {
@@ -19,11 +19,22 @@ type SignInRequest struct {
 }
 
 type CreateRecipeRequest struct {
-	UserId      int              `json:"userId" binding:"required"`
-	RecipeName  string           `json:"recipeName" binding:"required"`
-	Categories  response.CategoryInfo `json:"categories" binding:"required"`
-	Levels      response.LevelInfo    `json:"levels" binding:"required"`
-	TimeCook    int              `json:"timeCook" binding:"required"`
-	Ingridient  string           `json:"ingridient" binding:"required"`
-	HowToCook   string           `json:"howToCook" binding:"required"`
+	UserId     int                   `json:"userId" binding:"required"`
+	RecipeName string                `json:"recipeName" binding:"required"`
+	Categories response.CategoryInfo `json:"categories" binding:"required"`
+	Levels     response.LevelInfo    `json:"levels" binding:"required"`
+	TimeCook   int                   `json:"timeCook" binding:"required"`
+	Ingridient string                `json:"ingridient" binding:"required"`
+	HowToCook  string                `json:"howToCook" binding:"required"`
+}
+
+type RecipeFilter struct {
+	PageNumber string `form:"pageNumber"`
+	PageSize   string `form:"pageSize"`
+	RecipeName string `form:"recipeName"`
+	LevelID    string `form:"levelId"`
+	CategoryID string `form:"categoryId"`
+	Time       string `form:"time"`
+	SortBy     string `form:"sortBy"`
+	UserID     string `form:"userId"`
 }
