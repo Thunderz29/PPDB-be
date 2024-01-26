@@ -6,6 +6,7 @@ import (
 	"book-recipe-be-go/models/request"
 	"book-recipe-be-go/models/response"
 	"book-recipe-be-go/utils"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,6 +16,102 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+func CreateRecipe(c *gin.Context) {
+	file, err := c.FormFile("file")
+    if err != nil {
+        response := response.MessageResponse{
+            Message:    "Error reading file from form-data",
+            StatusCode: http.StatusBadRequest,
+            Status:     "ERROR",
+        }
+        c.JSON(http.StatusBadRequest, response)
+        return
+    }
+	// Baca data dari form-data
+	var request request.CreateRecipeRequest
+    jsonStr := c.PostForm("request")
+    if err := json.Unmarshal([]byte(jsonStr), &request); err != nil {
+        response := response.MessageResponse{
+            Message:    "Error parsing JSON from form-data",
+            StatusCode: http.StatusBadRequest,
+            Status:     "ERROR",
+        }
+        c.JSON(http.StatusBadRequest, response)
+        return
+    }
+
+	// Mapping data ke model Recipe
+	categories := models.Category{
+		CategoryID:   request.Categories.CategoryId,
+		CategoryName: request.Categories.CategoryName,
+	}
+
+	levels := models.Level{
+		LevelID:   request.Levels.LevelId,
+		LevelName: request.Levels.LevelName,
+	}
+
+	username, err := utils.GetusernameByUserID(uint(request.UserId))
+	if err != nil {
+		response := response.MessageResponse{
+			Message:    "Error getting user information",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+
+	imageFilename, err := config.UploadFileToMinio(file, &request)
+	if err != nil {
+		response := response.MessageResponse{
+			Message:    "Error uploading image to Minio",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	recipe := models.Recipe{
+		CategoryID:    request.Categories.CategoryId,
+		UserID:        request.UserId,
+		LevelID:       request.Levels.LevelId,
+		RecipeName:    request.RecipeName,
+		ImageFilename: imageFilename,
+		TimeCook:      &request.TimeCook,
+		Ingridient:    request.Ingridient,
+		HowToCook:     request.HowToCook,
+		IsDeleted:     false,
+		CreatedBy:     username, 
+		CreatedTime:   time.Now(),
+		ModifiedBy:    username, 
+		ModifiedTime:  time.Now(),
+		Category:      categories,
+		Level:         levels,
+	}
+
+
+	if err := config.DB.Create(&recipe).Error; err != nil {
+		response := response.MessageResponse{
+			Message:    "Terjadi kesalahan server. Silakan coba kembali",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	// Respons berhasil
+	responseMessage := "Resep " + request.RecipeName + " berhasil ditambahkan!"
+	c.JSON(http.StatusOK, response.MessageResponse{
+		Message:    responseMessage,
+		StatusCode: http.StatusOK,
+		Status:     "OK",
+	})
+}
 
 func ToggleFavorite(c *gin.Context) {
 	recipeID := c.Param("recipeId")

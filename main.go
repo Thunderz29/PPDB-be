@@ -2,10 +2,11 @@
 package main
 
 import (
-    "book-recipe-be-go/config"
-    "book-recipe-be-go/middleware"
-    "book-recipe-be-go/routes"
-    "github.com/gin-gonic/gin"
+	"book-recipe-be-go/config"
+	"book-recipe-be-go/middleware"
+	"book-recipe-be-go/routes"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -23,6 +24,7 @@ func main() {
         // Define user-related routes using the UserRoutes function from the routes package
         routes.UserRoutes(apiGroup)
         routes.RecipeRoutes(apiGroup)
+        routes.OptionListRoutes(apiGroup)
     }
 
     // Run the server on port 8080
