@@ -18,78 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func DeleteMyRecipe(c *gin.Context) {
-	recipeID := c.Param("recipeId")
-	userID := c.Query("userId")
-	var existingRecipe models.Recipe
 
-	recipeIDInt, err := strconv.Atoi(recipeID)
-	if err != nil {
-		response := response.MyRecipeResponse{
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
-			StatusCode: http.StatusInternalServerError,
-			Details:    err.Error(),
-		}
-		c.JSON(http.StatusInternalServerError, response)
-		return
-	}
-
-	userIDInt, err := strconv.Atoi(userID)
-	if err != nil {
-		response := response.MyRecipeResponse{
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
-			StatusCode: http.StatusInternalServerError,
-			Details:    err.Error(),
-		}
-		c.JSON(http.StatusInternalServerError, response)
-		return
-	}
-
-	recipeName, err := utils.GetRecipeNameByRecipeID(recipeIDInt)
-	if err != nil {
-		response := response.DataResponse{
-			Total:      0,
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
-			StatusCode: http.StatusInternalServerError,
-			Status:     "ERROR",
-		}
-		c.JSON(http.StatusInternalServerError, response)
-		return
-	}
-
-	err = config.DB.Where("recipe_id = ? AND user_id = ? AND is_deleted = ?", recipeIDInt, userIDInt, false).First(&existingRecipe).Error
-	if err != nil {
-		response := response.MyRecipeResponse{
-			Message:    "Data Already Deleted!",
-			StatusCode: http.StatusBadRequest,
-			Details: recipeName + " sudah terhapus!",
-		}
-		c.JSON(http.StatusBadRequest, response)
-		return
-	}
-
-	err = config.DB.Model(&models.Recipe{}).
-		Where("recipe_id = ? AND user_id = ?", recipeIDInt, userIDInt).Update("is_deleted", true).Error
-	if err != nil {
-		response := response.MyRecipeResponse{
-			Message:    "Terjadi kesalahan saat menghapus data.",
-			StatusCode: http.StatusInternalServerError,
-			Details:    err.Error(),
-		}
-		c.JSON(http.StatusInternalServerError, response)
-		return
-	}
-
-	response := response.RecipeDetailsResponse{
-		Total: 1,
-		Data: nil,
-		Message:    "Resep " + recipeName + " berhasil dihapus!",
-		StatusCode: http.StatusOK,
-		Status: "OK",
-	}
-	c.JSON(http.StatusOK, response)
-
-}
 
 func GetAllMyRecipes(c *gin.Context) {
 	var recipes []models.Recipe
@@ -528,8 +457,21 @@ func ToggleFavorite(c *gin.Context) {
 		return
 	}
 
+	userID, err := strconv.Atoi(toggleRequest.UserId)
+	if err != nil {
+		response := response.DataResponse{
+			Total:      0,
+			Data:       nil,
+			Message:    "Terjadi kesalahan pada server. Silakan coba kembali.",
+			StatusCode: http.StatusBadRequest,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
 	// Mengambil fullname berdasarkan userId
-	fullname, err := utils.GetFullnameByUserID(toggleRequest.UserId)
+	fullname, err := utils.GetFullnameByUserID(uint(userID))
 	if err != nil {
 		response := response.MessageResponse{
 			Message:    "Error getting user information",
@@ -605,7 +547,7 @@ func ToggleFavorite(c *gin.Context) {
 
 	// Recipe is not yet a favorite, insert a new favorite record
 	newFavorite := models.FavoriteFood{
-		UserID:       int(toggleRequest.UserId),
+		UserID:       userID,
 		RecipeID:     recipeIDInt,
 		IsFavorite:   true,
 		CreatedBy:    fullname,
@@ -747,4 +689,77 @@ func GetRecipeDetailsById(c *gin.Context) {
 		Status:     "Success",
 	}
 	c.JSON(http.StatusOK, response)
+}
+
+func DeleteMyRecipe(c *gin.Context) {
+	recipeID := c.Param("recipeId")
+	userID := c.Query("userId")
+	var existingRecipe models.Recipe
+
+	recipeIDInt, err := strconv.Atoi(recipeID)
+	if err != nil {
+		response := response.MyRecipeResponse{
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusInternalServerError,
+			Details:    err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	userIDInt, err := strconv.Atoi(userID)
+	if err != nil {
+		response := response.MyRecipeResponse{
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusInternalServerError,
+			Details:    err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	recipeName, err := utils.GetRecipeNameByRecipeID(recipeIDInt)
+	if err != nil {
+		response := response.DataResponse{
+			Total:      0,
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	err = config.DB.Where("recipe_id = ? AND user_id = ? AND is_deleted = ?", recipeIDInt, userIDInt, false).First(&existingRecipe).Error
+	if err != nil {
+		response := response.MyRecipeResponse{
+			Message:    "Data Already Deleted!",
+			StatusCode: http.StatusBadRequest,
+			Details:    recipeName + " sudah terhapus!",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	err = config.DB.Model(&models.Recipe{}).
+		Where("recipe_id = ? AND user_id = ?", recipeIDInt, userIDInt).Update("is_deleted", true).Error
+	if err != nil {
+		response := response.MyRecipeResponse{
+			Message:    "Terjadi kesalahan saat menghapus data.",
+			StatusCode: http.StatusInternalServerError,
+			Details:    err.Error(),
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	response := response.RecipeDetailsResponse{
+		Total:      1,
+		Data:       nil,
+		Message:    "Resep " + recipeName + " berhasil dihapus!",
+		StatusCode: http.StatusOK,
+		Status:     "OK",
+	}
+	c.JSON(http.StatusOK, response)
+
 }
