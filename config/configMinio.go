@@ -34,42 +34,51 @@ func ConfigMinio() (*minio.Client, error) {
 	return minioClient, nil
 }
 
-func UploadFileToMinio(file *multipart.FileHeader, createRecipeRequest *request.CreateRecipeRequest) (string, error) {
-    minioClient, err := ConfigMinio()
-    if err != nil {
-        return "", fmt.Errorf("Failed to initialize MinIO client: %v", err)
-    }
+func UploadFileToMinio(file *multipart.FileHeader, recipeRequest interface{}) (string, error) {
+	minioClient, err := ConfigMinio()
+	if err != nil {
+		return "", fmt.Errorf("Failed to initialize MinIO client: %v", err)
+	}
 
-    ctx := context.Background()
-    bucketName := "talent79-dev"
+	ctx := context.Background()
+	bucketName := "talent79-dev"
 
-    // Cleanse strings for filename
-    recipeName := sanitizeForFilename(createRecipeRequest.RecipeName)
-    categoryName := sanitizeForFilename(createRecipeRequest.Categories.CategoryName)
-    levelName := sanitizeForFilename(createRecipeRequest.Levels.LevelName)
+	var recipeName, categoryName, levelName string
+	var timestamp, fileExtension, generatedFilename string
 
-    if recipeName == "" || categoryName == "" || levelName == "" {
-        return "", fmt.Errorf("One or more components for filename are empty. Recipe: %s, Category: %s, Level: %s",
-            createRecipeRequest.RecipeName, createRecipeRequest.Categories.CategoryName, createRecipeRequest.Levels.LevelName)
-    }
+	switch req := recipeRequest.(type) {
+	case *request.UpdateRecipeRequest:
+		// Use fields from UpdateRecipeRequest
+		recipeName = sanitizeForFilename(req.RecipeName)
+		categoryName = sanitizeForFilename(req.Categories.CategoryName)
+		levelName = sanitizeForFilename(req.Levels.LevelName)
+		timestamp = strconv.FormatInt(time.Now().UnixNano(), 10)
+		fileExtension = getFileExtension(file.Filename)
+		generatedFilename = fmt.Sprintf("%s_%s_%s_%s%s", recipeName, categoryName, levelName, timestamp, fileExtension)
+	case *request.CreateRecipeRequest:
+		// Use fields from CreateRecipeRequest
+		recipeName = sanitizeForFilename(req.RecipeName)
+		categoryName = sanitizeForFilename(req.Categories.CategoryName)
+		levelName = sanitizeForFilename(req.Levels.LevelName)
+		timestamp = strconv.FormatInt(time.Now().UnixNano(), 10)
+		fileExtension = getFileExtension(file.Filename)
+		generatedFilename = fmt.Sprintf("%s_%s_%s_%s%s", recipeName, categoryName, levelName, timestamp, fileExtension)
+	default:
+		return "", fmt.Errorf("Unsupported request type")
+	}
 
-    timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
-    fileExtension := getFileExtension(file.Filename)
+	fileData, err := file.Open()
+	if err != nil {
+		return "", fmt.Errorf("Failed to open file: %v", err)
+	}
+	defer fileData.Close()
 
-    generatedFilename := fmt.Sprintf("%s_%s_%s_%s%s", recipeName, categoryName, levelName, timestamp, fileExtension)
+	_, err = minioClient.PutObject(ctx, bucketName, generatedFilename, fileData, file.Size, minio.PutObjectOptions{})
+	if err != nil {
+		return "", fmt.Errorf("Failed to upload file to MinIO: %v", err)
+	}
 
-    fileData, err := file.Open()
-    if err != nil {
-        return "", fmt.Errorf("Failed to open file: %v", err)
-    }
-    defer fileData.Close()
-
-    _, err = minioClient.PutObject(ctx, bucketName, generatedFilename, fileData, file.Size, minio.PutObjectOptions{})
-    if err != nil {
-        return "", fmt.Errorf("Failed to upload file to MinIO: %v", err)
-    }
-
-    return generatedFilename, nil
+	return generatedFilename, nil
 }
 
 

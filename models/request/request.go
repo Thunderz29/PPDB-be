@@ -38,3 +38,15 @@ type RecipeFilter struct {
 	SortBy     string `form:"sortBy"`
 	UserID     string `form:"userId"`
 }
+
+type UpdateRecipeRequest struct {
+	RecipeID      int           `json:"recipeId" binding:"required"`
+	Categories  response.CategoryInfo `json:"categories" binding:"required"`
+	Levels      response.LevelInfo    `json:"levels" binding:"required"`
+	UserID        int           `json:"userId" binding:"required"`
+	RecipeName    string        `json:"recipeName" binding:"required"`
+	ImageFilename string        `json:"imageFilename" binding:"required"`
+	TimeCook      int          `json:"timeCook" binding:"required"`
+	Ingridient    string        `json:"ingridient" binding:"required"`
+	HowToCook     string        `json:"howToCook" binding:"required"`
+}

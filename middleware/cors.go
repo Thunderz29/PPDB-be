@@ -8,7 +8,7 @@ import (
 func SetupCORS(router *gin.Engine) {
     // Configure CORS middleware
     middle := cors.DefaultConfig()
-    middle.AllowOrigins = []string{"http://localhost:5173"} // Add the appropriate origins
+    middle.AllowOrigins = []string{"http://localhost:5173", "http://localhost:3000"}
     middle.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
     middle.AllowHeaders = []string{"Authorization", "Content-Type"}
 
