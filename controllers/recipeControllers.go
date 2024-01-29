@@ -18,7 +18,61 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// func GetAllMyFavRecipes(c *gin.Context) {
+// 	var recipes []models.Recipe
+// 	var recipeFilter request.RecipeFilter
+// 	var total int64
 
+// 	minioClient, err := config.ConfigMinio()
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 		return
+// 	}
+
+// 	if err := c.ShouldBindQuery(&recipeFilter); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+
+// 	// Mengonversi nilai string ke integer
+// 	pageNumberInt, _ := strconv.Atoi(recipeFilter.PageNumber)
+// 	pageSizeInt, _ := strconv.Atoi(recipeFilter.PageSize)
+
+// 	// Menetapkan nilai default jika tidak ada nilai atau nilai tidak valid
+// 	if pageNumberInt <= 0 {
+// 		pageNumberInt = 1
+// 	}
+
+// 	if pageSizeInt <= 0 {
+// 		pageSizeInt = 10 // Atur ke ukuran halaman default
+// 	}
+
+// 	// Mendapatkan token dari header HTTP
+// 	tokenString := c.GetHeader("Authorization")
+// 	if tokenString == "" {
+// 		response := response.MyRecipeResponse{
+// 			Message:    "Unauthorized User!",
+// 			StatusCode: http.StatusUnauthorized,
+// 			Details:     "User belum terautentikasi!",
+// 		}
+// 		c.JSON(http.StatusUnauthorized, response)
+// 		return
+// 	}
+
+// 	// Men-decode token untuk mendapatkan informasi pengguna
+// 	userId, err := utils.GetUserIdFromToken(tokenString)
+// 	if err != nil {
+// 		response := response.DataResponse{
+// 			Total:      0,
+// 			Data:       nil,
+// 			Message:    "Token tidak valid",
+// 			StatusCode: http.StatusUnauthorized,
+// 			Status:     "Unauthorized",
+// 		}
+// 		c.JSON(http.StatusUnauthorized, response)
+// 		return
+// 	}
+// }
 
 func GetAllMyRecipes(c *gin.Context) {
 	var recipes []models.Recipe
