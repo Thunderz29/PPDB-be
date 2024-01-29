@@ -536,7 +536,7 @@ func CreateRecipe(c *gin.Context) {
 
 func UpdateRecipe(c *gin.Context) {
 	// Baca data dari form-data
-	file, err := c.FormFile("file")
+		file, err := c.FormFile("file")
 	if err != nil {
 		response := response.MessageResponse{
 			Message:    "Error reading file from form-data",
@@ -548,17 +548,56 @@ func UpdateRecipe(c *gin.Context) {
 	}
 
 	// Baca data dari JSON form-data
+	var requestJSON string
+	if val, err := c.FormFile("request"); err == nil {
+		// Jika terdapat file dengan nama "request"
+		fileData, err := val.Open()
+		if err != nil {
+			log.Println("Error reading JSON file from form-data:", err)
+			response := response.MessageResponse{
+				Message:    "Error reading JSON file from form-data",
+				StatusCode: http.StatusBadRequest,
+				Status:     "ERROR",
+			}
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+		defer fileData.Close()
+
+		// Membaca isi file JSON
+		jsonBytes, err := io.ReadAll(fileData)
+		if err != nil {
+			log.Println("Error reading JSON from form-data:", err)
+			response := response.MessageResponse{
+				Message:    "Error reading JSON from form-data",
+				StatusCode: http.StatusBadRequest,
+				Status:     "ERROR",
+			}
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+
+		requestJSON = string(jsonBytes)
+	} else {
+		// Jika tidak terdapat file dengan nama "request"
+		requestJSON = c.PostForm("request")
+	}
+
+	// Log requestJSON
+	log.Println("Received JSON request:", requestJSON)
+
+	// Menguraikan data JSON menjadi struct atau model yang sesuai
 	var request request.UpdateRecipeRequest
-    jsonStr := c.PostForm("request")
-    if err := json.Unmarshal([]byte(jsonStr), &request); err != nil {
-        response := response.MessageResponse{
-            Message:    "Error parsing JSON from form-data",
-            StatusCode: http.StatusBadRequest,
-            Status:     "ERROR",
-        }
-        c.JSON(http.StatusBadRequest, response)
-        return
-    }
+	if err := json.Unmarshal([]byte(requestJSON), &request); err != nil {
+		log.Println("Error parsing JSON from form-data:", err)
+		response := response.MessageResponse{
+			Message:    "Error parsing JSON from form-data",
+			StatusCode: http.StatusBadRequest,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
 
 	// Dapatkan informasi user berdasarkan ID
 	username, err := utils.GetusernameByUserID(uint(request.UserID))
