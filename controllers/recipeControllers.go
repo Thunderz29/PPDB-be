@@ -17,61 +17,153 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// func GetAllMyFavRecipes(c *gin.Context) {
-// 	var recipes []models.Recipe
-// 	var recipeFilter request.RecipeFilter
-// 	var total int64
+func GetAllMyFavRecipes(c *gin.Context) {
+	var recipes []models.Recipe
+	var recipeFilter request.RecipeFilter
+	var total int64
 
-// 	minioClient, err := config.ConfigMinio()
-// 	if err != nil {
-// 		log.Fatalln(err)
-// 		return
-// 	}
+	minioClient, err := config.ConfigMinio()
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
 
-// 	if err := c.ShouldBindQuery(&recipeFilter); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
+	if err := c.ShouldBindQuery(&recipeFilter); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-// 	// Mengonversi nilai string ke integer
-// 	pageNumberInt, _ := strconv.Atoi(recipeFilter.PageNumber)
-// 	pageSizeInt, _ := strconv.Atoi(recipeFilter.PageSize)
+	// Mengonversi nilai string ke integer
+	pageNumberInt, _ := strconv.Atoi(recipeFilter.PageNumber)
+	pageSizeInt, _ := strconv.Atoi(recipeFilter.PageSize)
 
-// 	// Menetapkan nilai default jika tidak ada nilai atau nilai tidak valid
-// 	if pageNumberInt <= 0 {
-// 		pageNumberInt = 1
-// 	}
+	// Menetapkan nilai default jika tidak ada nilai atau nilai tidak valid
+	if pageNumberInt <= 0 {
+		pageNumberInt = 1
+	}
 
-// 	if pageSizeInt <= 0 {
-// 		pageSizeInt = 10 // Atur ke ukuran halaman default
-// 	}
+	if pageSizeInt <= 0 {
+		pageSizeInt = 10 // Atur ke ukuran halaman default
+	}
 
-// 	// Mendapatkan token dari header HTTP
-// 	tokenString := c.GetHeader("Authorization")
-// 	if tokenString == "" {
-// 		response := response.MyRecipeResponse{
-// 			Message:    "Unauthorized User!",
-// 			StatusCode: http.StatusUnauthorized,
-// 			Details:     "User belum terautentikasi!",
-// 		}
-// 		c.JSON(http.StatusUnauthorized, response)
-// 		return
-// 	}
+	// Mendapatkan token dari header HTTP
+	tokenString := c.GetHeader("Authorization")
+	if tokenString == "" {
+		response := response.MyRecipeResponse{
+			Message:    "Unauthorized User!",
+			StatusCode: http.StatusUnauthorized,
+			Details:    "User belum terautentikasi!",
+		}
+		c.JSON(http.StatusUnauthorized, response)
+		return
+	}
 
-// 	// Men-decode token untuk mendapatkan informasi pengguna
-// 	userId, err := utils.GetUserIdFromToken(tokenString)
-// 	if err != nil {
-// 		response := response.DataResponse{
-// 			Total:      0,
-// 			Data:       nil,
-// 			Message:    "Token tidak valid",
-// 			StatusCode: http.StatusUnauthorized,
-// 			Status:     "Unauthorized",
-// 		}
-// 		c.JSON(http.StatusUnauthorized, response)
-// 		return
-// 	}
-// }
+	// Men-decode token untuk mendapatkan informasi pengguna
+	userId, err := utils.GetUserIdFromToken(tokenString)
+	if err != nil {
+		response := response.MyRecipeResponse{
+			Message:    "Unauthorized User!",
+			StatusCode: http.StatusUnauthorized,
+			Details:    "User belum terautentikasi!",
+		}
+		c.JSON(http.StatusUnauthorized, response)
+		return
+	}
+
+	db := config.DB.Model(&models.FavoriteFood{}).
+		Joins("JOIN recipes ON favorite_foods.recipe_id = recipes.recipe_id").
+		Joins("LEFT JOIN categories ON recipes.category_id = categories.category_id").
+		Joins("LEFT JOIN levels ON recipes.level_id = levels.level_id").
+		Select("recipes.*, categories.category_name as recipe_category_name, levels.level_name as recipe_level_name, favorite_foods.is_favorite").
+		Where("favorite_foods.user_id = ? AND favorite_foods.is_favorite = ?", userId, true)
+
+	// Apply filters
+	db = utils.ApplyRecipeFilters(db, &recipeFilter)
+
+	// Filter by time cook
+	if recipeFilter.Time != "" {
+		timeCookInt, err := strconv.Atoi(recipeFilter.Time)
+
+		if err != nil {
+			response := response.MyRecipeResponse{
+				Message:    "Parameter time harus berupa angka",
+				StatusCode: http.StatusBadRequest,
+				Details:    "Bad Request",
+			}
+			c.JSON(http.StatusBadRequest, response)
+			return
+		}
+
+		if timeCookInt <= 30 {
+			db = db.Where("recipes.time_cook <= ?", timeCookInt)
+		} else if timeCookInt > 30 && timeCookInt <= 60 {
+			db = db.Where("recipes.time_cook > 30 AND recipes.time_cook <= ?", timeCookInt)
+		} else if timeCookInt > 60 {
+			db = db.Where("recipes.time_cook > 60 AND recipes.time_cook <= ?", timeCookInt)
+		}
+	}
+
+	// Menggunakan Joins untuk mengambil data dari tabel levels dan categories
+	if err := db.
+		Preload("Category").
+		Preload("Level").
+		Order("LOWER(recipes.recipe_name) ASC").
+		Where("recipes.is_deleted = ?", false).
+		Count(&total).
+		Limit(pageSizeInt).Offset((pageNumberInt - 1) * pageSizeInt).
+		Find(&recipes).Error; err != nil {
+		response := response.MessageResponse{
+			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			StatusCode: http.StatusInternalServerError,
+			Status:     "ERROR",
+		}
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	// Modify the response mapping
+	var recipeEntries []response.RecipeEntry
+	for _, recipe := range recipes {
+		imageUrl, err := utils.GetImageURL(minioClient, recipe.ImageFilename)
+		if err != nil {
+			log.Println("Error getting image URL:", err)
+			continue
+		}
+
+		entry := response.RecipeEntry{
+			RecipeId:   recipe.RecipeID,
+			Categories: response.CategoryInfo{CategoryId: recipe.CategoryID, CategoryName: recipe.Category.CategoryName},
+			Levels:     response.LevelInfo{LevelId: recipe.LevelID, LevelName: recipe.Level.LevelName},
+			RecipeName: recipe.RecipeName,
+			ImageUrl:   imageUrl,
+			Time:       recipe.TimeCook,
+			IsFavorite: true,
+		}
+
+		recipeEntries = append(recipeEntries, entry)
+	}
+
+	if len(recipeEntries) == 0 {
+		response := response.MyRecipeResponse{
+			Message:    "Data tidak ditemukan!",
+			StatusCode: http.StatusNotFound,
+			Details:    "Data tidak ditemukan!",
+		}
+		c.JSON(http.StatusNotFound, response)
+		return
+	}
+
+	response := response.DataResponse{
+		Total:      total,
+		Data:       recipeEntries,
+		Message:    "Berhasil memuat Resep Masakan Favorit!",
+		StatusCode: http.StatusOK,
+		Status:     "OK",
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+
 
 func GetAllMyRecipes(c *gin.Context) {
 	var recipes []models.Recipe

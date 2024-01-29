@@ -22,7 +22,7 @@ func ApplyRecipeFilters(db *gorm.DB, filter *request.RecipeFilter) *gorm.DB {
 	if filter.LevelID != "" {
 		levelID, err := strconv.Atoi(filter.LevelID)
 		if err == nil {
-			db = db.Where("level_id = ?", levelID)
+			db = db.Where("recipes.level_id = ?", levelID)
 		}
 	}
 
@@ -30,7 +30,7 @@ func ApplyRecipeFilters(db *gorm.DB, filter *request.RecipeFilter) *gorm.DB {
 	if filter.CategoryID != "" {
 		categoryID, err := strconv.Atoi(filter.CategoryID)
 		if err == nil {
-			db = db.Where("category_id = ?", categoryID)
+			db = db.Where("recipes.category_id = ?", categoryID)
 		}
 	}
 
