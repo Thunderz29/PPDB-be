@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
 	"github.com/minio/minio-go/v7"
 	"gorm.io/gorm"
 )
@@ -80,7 +79,7 @@ func GetLevelName(levelID int) (string, error) {
 }
 
 func GetImageURL(minioClient *minio.Client, filename string) (string, error) {
-	url, err := config.GetPublicLink(minioClient, filename)
+	url, err := GetPublicLink(minioClient, filename)
 	if err != nil {
 		return "", err
 	}

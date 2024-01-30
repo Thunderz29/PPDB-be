@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -504,10 +503,9 @@ func CreateRecipe(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
-	// Baca data dari form-data
-		var requestJSON string
+	
+	var requestJSON string
 	if val, err := c.FormFile("request"); err == nil {
-		// Jika terdapat file dengan nama "request"
 		fileData, err := val.Open()
 		if err != nil {
 			log.Println("Error reading JSON file from form-data:", err)
@@ -536,7 +534,6 @@ func CreateRecipe(c *gin.Context) {
 
 		requestJSON = string(jsonBytes)
 	} else {
-		// Jika tidak terdapat file dengan nama "request"
 		requestJSON = c.PostForm("request")
 	}
 
@@ -578,7 +575,7 @@ func CreateRecipe(c *gin.Context) {
 		return
 	}
 
-	imageFilename, err := config.UploadFileToMinio(file, &request)
+	imageFilename, err := utils.UploadFileToMinio(file, &request)
 	if err != nil {
 		response := response.MessageResponse{
 			Message:    "Error uploading image to Minio",
@@ -628,7 +625,7 @@ func CreateRecipe(c *gin.Context) {
 
 func UpdateRecipe(c *gin.Context) {
 	// Baca data dari form-data
-		file, err := c.FormFile("file")
+	file, err := c.FormFile("file")
 	if err != nil {
 		response := response.MessageResponse{
 			Message:    "Error reading file from form-data",
@@ -728,7 +725,7 @@ func UpdateRecipe(c *gin.Context) {
 	}
 
 	// Upload gambar ke Minio
-	imageFilename, err := config.UploadFileToMinio(file, &request)
+	imageFilename, err := utils.UploadFileToMinio(file, &request)
 	if err != nil {
 		response := response.MessageResponse{
 			Message:    "Error uploading image to Minio",
