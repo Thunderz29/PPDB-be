@@ -74,6 +74,12 @@ docker network create book-recipe-be-go-network
 docker run -d -p 8080:8080 --name book-recipe-be-go --network book-recipe-be-go-network book-recipe-be-go
 ```
 
+# URL Health Check
+
+```bash
+http://localhost:8080/health
+```
+
 # Learn More
 
 You can learn more in the [Golang Documentation](https://go.dev/doc/)
