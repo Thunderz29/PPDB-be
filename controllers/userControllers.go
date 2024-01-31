@@ -5,6 +5,8 @@ import (
 	"book-recipe-be-go/models"
 	"book-recipe-be-go/models/request"
 	"book-recipe-be-go/models/response"
+	"book-recipe-be-go/utils"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -28,7 +30,7 @@ func SignUp(c *gin.Context) {
 
 	if userExists := config.DB.Where("username = ?", request.Username).First(&models.User{}).Error; userExists == nil {
 		response := response.MessageResponse{
-			Message:    "Username telah digunakan oleh user yang telah mendaftar sebelumnya",
+			Message:    utils.ErrUserAlreadyExist,
 			StatusCode: http.StatusBadRequest,
 			Status:     "ERROR",
 		}
@@ -38,7 +40,7 @@ func SignUp(c *gin.Context) {
 
 	if request.Password != request.RetypePassword {
 		response := response.MessageResponse{
-			Message:    "Konfirmasi kata sandi tidak sama dengan kata sandi",
+			Message:    utils.ErrConfirmPassword,
 			StatusCode: http.StatusBadRequest,
 			Status:     "ERROR",
 		}
@@ -48,7 +50,7 @@ func SignUp(c *gin.Context) {
 
 	if len(request.Password) < 6 {
 		response := response.MessageResponse{
-			Message:    "Kata sandi tidak boleh kurang dari 6 karakter",
+			Message:    utils.ErrValidatePassword,
 			StatusCode: http.StatusBadRequest,
 			Status:     "ERROR",
 		}
@@ -59,7 +61,7 @@ func SignUp(c *gin.Context) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
 	if err != nil {
 		response := response.MessageResponse{
-			Message:    "Error Hashing Password!",
+			Message:    utils.ErrHashPassword,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -80,7 +82,7 @@ func SignUp(c *gin.Context) {
 
 	if err := config.DB.Create(&user).Error; err != nil {
 		response := response.MessageResponse{
-			Message:    "Terjadi kesalahan server. Silakan coba kembali",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -89,7 +91,7 @@ func SignUp(c *gin.Context) {
 	}
 
 	response := response.MessageResponse{
-		Message:   "User " + request.Username + " registered successfully!",
+		Message:   fmt.Sprintf(utils.SuccSignUp, request.Username),
 		StatusCode: http.StatusOK,
 		Status:     "OK",
 	}
@@ -112,7 +114,7 @@ func SignIn(c *gin.Context) {
 	var user models.User
 	if err := config.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
 		response := response.MessageResponse{
-			Message:    "User not found",
+			Message:    utils.ErrUserNotFound,
 			StatusCode: http.StatusNotFound,
 			Status:     "ERROR",
 		}
@@ -124,7 +126,7 @@ func SignIn(c *gin.Context) {
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
 	if err != nil {
 		response := response.MessageResponse{
-			Message:    "Invalid password",
+			Message:    utils.ErrInvalidPassword,
 			StatusCode: http.StatusUnauthorized,
 			Status:     "ERROR",
 		}
@@ -141,7 +143,7 @@ func SignIn(c *gin.Context) {
 	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET")))
 	if err != nil {
 		response := response.MessageResponse{
-			Message:    "Failed to create token",
+			Message:    utils.ErrCreateToken,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -157,7 +159,7 @@ func SignIn(c *gin.Context) {
 			Username: user.Username,
 			Role:     user.Role,
 		},
-		Message:    "Auth User Success",
+		Message:    utils.SuccSignIn,
 		StatusCode: http.StatusOK,
 		Status:     "OK",
 	}

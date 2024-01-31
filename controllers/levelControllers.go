@@ -4,8 +4,9 @@ import (
 	"book-recipe-be-go/config"
 	"book-recipe-be-go/models"
 	"book-recipe-be-go/models/response"
-	"github.com/gin-gonic/gin"
+	"book-recipe-be-go/utils"
 	"net/http"
+	"github.com/gin-gonic/gin"
 )
 
 // GetAllLevels mengembalikan semua kategori dengan hanya levelId dan levelName
@@ -15,7 +16,7 @@ func GetAllLevels(c *gin.Context) {
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, response.LevelListResponse{
-			Message:    "Terjadi kesalahan server. Silakan coba kembali",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		})
@@ -33,7 +34,7 @@ func GetAllLevels(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response.LevelListResponse{
 		Data:       levelInfos,
-		Message:    "Pesan Sukses",
+		Message:    utils.Success,
 		StatusCode: http.StatusOK,
 		Status:     "Success",
 	})

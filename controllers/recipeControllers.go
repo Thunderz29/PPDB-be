@@ -7,12 +7,14 @@ import (
 	"book-recipe-be-go/models/response"
 	"book-recipe-be-go/utils"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -49,9 +51,9 @@ func GetAllMyFavRecipes(c *gin.Context) {
 	tokenString := c.GetHeader("Authorization")
 	if tokenString == "" {
 		response := response.MyRecipeResponse{
-			Message:    "Unauthorized User!",
+			Message:    utils.ErrUnauthorizedUser,
 			StatusCode: http.StatusUnauthorized,
-			Details:    "User belum terautentikasi!",
+			Details:    utils.ErrUnauthorizedUser,
 		}
 		c.JSON(http.StatusUnauthorized, response)
 		return
@@ -61,9 +63,9 @@ func GetAllMyFavRecipes(c *gin.Context) {
 	userId, err := utils.GetUserIdFromToken(tokenString)
 	if err != nil {
 		response := response.MyRecipeResponse{
-			Message:    "Unauthorized User!",
+			Message:    utils.ErrUnauthorizedUser,
 			StatusCode: http.StatusUnauthorized,
-			Details:    "User belum terautentikasi!",
+			Details:    utils.ErrUnauthorizedUser,
 		}
 		c.JSON(http.StatusUnauthorized, response)
 		return
@@ -85,9 +87,9 @@ func GetAllMyFavRecipes(c *gin.Context) {
 
 		if err != nil {
 			response := response.MyRecipeResponse{
-				Message:    "Parameter time harus berupa angka",
+				Message:    utils.ErrTimeValidation,
 				StatusCode: http.StatusBadRequest,
-				Details:    "Bad Request",
+				Details:    utils.ErrBadRequest,
 			}
 			c.JSON(http.StatusBadRequest, response)
 			return
@@ -112,7 +114,7 @@ func GetAllMyFavRecipes(c *gin.Context) {
 		Limit(pageSizeInt).Offset((pageNumberInt - 1) * pageSizeInt).
 		Find(&recipes).Error; err != nil {
 		response := response.MessageResponse{
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -144,9 +146,9 @@ func GetAllMyFavRecipes(c *gin.Context) {
 
 	if len(recipeEntries) == 0 {
 		response := response.MyRecipeResponse{
-			Message:    "Data tidak ditemukan!",
+			Message:    utils.ErrDataNotFound,
 			StatusCode: http.StatusNotFound,
-			Details:    "Data tidak ditemukan!",
+			Details:    utils.ErrDataNotFound,
 		}
 		c.JSON(http.StatusNotFound, response)
 		return
@@ -155,7 +157,7 @@ func GetAllMyFavRecipes(c *gin.Context) {
 	response := response.DataResponse{
 		Total:      total,
 		Data:       recipeEntries,
-		Message:    "Berhasil memuat Resep Masakan Favorit!",
+		Message:    utils.SuccGetFavRecipe,
 		StatusCode: http.StatusOK,
 		Status:     "OK",
 	}
@@ -195,9 +197,9 @@ func GetAllMyRecipes(c *gin.Context) {
 
 	if recipeFilter.UserID == "" {
 		response := response.MyRecipeResponse{
-			Message:    "User tidak valid",
+			Message:    utils.ErrUnauthorizedUser,
 			StatusCode: http.StatusUnauthorized,
-			Details:    "Unauthorized",
+			Details:    utils.ErrUnauthorizedUser,
 		}
 		c.JSON(http.StatusBadRequest, response)
 		return
@@ -214,9 +216,9 @@ func GetAllMyRecipes(c *gin.Context) {
 
 		if err != nil {
 			response := response.MyRecipeResponse{
-				Message:    "Parameter time harus berupa angka",
+				Message:    utils.ErrTimeValidation,
 				StatusCode: http.StatusBadRequest,
-				Details:    "Bad Request",
+				Details:    utils.ErrBadRequest,
 			}
 			c.JSON(http.StatusBadRequest, response)
 			return
@@ -235,11 +237,11 @@ func GetAllMyRecipes(c *gin.Context) {
 	userIDInt, err := strconv.Atoi(recipeFilter.UserID)
 	if err != nil {
 		response := response.MyRecipeResponse{
-			Message:    err.Error(),
-			StatusCode: http.StatusBadRequest,
-			Details:    "Bad Request",
+			Message:    utils.ErrInternalServer,
+			StatusCode: http.StatusInternalServerError,
+			Details:    err.Error(),
 		}
-		c.JSON(http.StatusBadRequest, response)
+		c.JSON(http.StatusInternalServerError, response)
 		return
 	}
 
@@ -254,7 +256,7 @@ func GetAllMyRecipes(c *gin.Context) {
 		Limit(pageSizeInt).Offset((pageNumberInt - 1) * pageSizeInt).
 		Find(&recipes).Error; err != nil {
 		response := response.MessageResponse{
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -300,9 +302,9 @@ func GetAllMyRecipes(c *gin.Context) {
 
 	if len(recipeEntries) == 0 {
 		response := response.MyRecipeResponse{
-			Message:    "Resep masakan tidak tersedia",
+			Message:    utils.ErrRecipeNotFound,
 			StatusCode: http.StatusNotFound,
-			Details:    "Data tidak ditemukan!",
+			Details:    utils.ErrDataNotFound,
 		}
 		c.JSON(http.StatusNotFound, response)
 		return
@@ -311,7 +313,7 @@ func GetAllMyRecipes(c *gin.Context) {
 	response := response.DataResponse{
 		Total:      total,
 		Data:       recipeEntries,
-		Message:    "Berhasil memuat Resep Masakan Saya",
+		Message:    utils.SuccGetMyRecipe,
 		StatusCode: http.StatusOK,
 		Status:     "OK",
 	}
@@ -349,7 +351,7 @@ func GetAllRecipes(c *gin.Context) {
 
 	if recipeFilter.UserID == "" {
 		response := response.MessageResponse{
-			Message:    "User tidak valid",
+			Message:    utils.ErrUnauthorizedUser,
 			StatusCode: http.StatusUnauthorized,
 			Status:     "ERROR",
 		}
@@ -388,7 +390,7 @@ func GetAllRecipes(c *gin.Context) {
 					db = db.Where("time_cook >= ? AND time_cook <= ?", minTimeCook, maxTimeCook)
 				} else {
 					response := response.MessageResponse{
-						Message:    "Invalid time cook range",
+						Message:    utils.ErrInvalidTimeCook,
 						StatusCode: http.StatusBadRequest,
 						Status:     "ERROR",
 					}
@@ -397,7 +399,7 @@ func GetAllRecipes(c *gin.Context) {
 				}
 			} else {
 				response := response.MessageResponse{
-					Message:    "Invalid time cook format",
+					Message:    utils.ErrTimeValidation,
 					StatusCode: http.StatusBadRequest,
 					Status:     "ERROR",
 				}
@@ -417,7 +419,7 @@ func GetAllRecipes(c *gin.Context) {
 		Limit(pageSizeInt).Offset((pageNumberInt - 1) * pageSizeInt).
 		Find(&recipes).Error; err != nil {
 		response := response.MessageResponse{
-			Message:    "Terjadi kesalahan saat mengambil data resep",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -474,7 +476,7 @@ func GetAllRecipes(c *gin.Context) {
 
 	if len(recipeEntries) == 0 {
 		response := response.MessageResponse{
-			Message:    "Resep masakan tidak tersedia",
+			Message:    utils.ErrRecipeNotFound,
 			StatusCode: http.StatusNotFound,
 			Status:     "OK",
 		}
@@ -485,7 +487,7 @@ func GetAllRecipes(c *gin.Context) {
 	response := response.DataResponse{
 		Total:      total,
 		Data:       recipeEntries,
-		Message:    "Berhasil memuat Resep Masakan",
+		Message:    utils.SuccGetAllRecipe,
 		StatusCode: http.StatusOK,
 		Status:     "Success",
 	}
@@ -496,7 +498,7 @@ func CreateRecipe(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		response := response.MessageResponse{
-			Message:    "Error reading file from form-data",
+			Message:    utils.ErrReadingFile,
 			StatusCode: http.StatusBadRequest,
 			Status:     "ERROR",
 		}
@@ -508,9 +510,9 @@ func CreateRecipe(c *gin.Context) {
 	if val, err := c.FormFile("request"); err == nil {
 		fileData, err := val.Open()
 		if err != nil {
-			log.Println("Error reading JSON file from form-data:", err)
+			log.Println(utils.ErrReadingFile, err)
 			response := response.MessageResponse{
-				Message:    "Error reading JSON file from form-data",
+				Message:    utils.ErrReadingJsonFile,
 				StatusCode: http.StatusBadRequest,
 				Status:     "ERROR",
 			}
@@ -522,9 +524,9 @@ func CreateRecipe(c *gin.Context) {
 		// Membaca isi file JSON
 		jsonBytes, err := io.ReadAll(fileData)
 		if err != nil {
-			log.Println("Error reading JSON from form-data:", err)
+			log.Println(utils.ErrReadingJsonFile, err)
 			response := response.MessageResponse{
-				Message:    "Error reading JSON from form-data",
+				Message:    utils.ErrReadingJsonFile,
 				StatusCode: http.StatusBadRequest,
 				Status:     "ERROR",
 			}
@@ -543,9 +545,9 @@ func CreateRecipe(c *gin.Context) {
 	// Menguraikan data JSON menjadi struct atau model yang sesuai
 	var request request.CreateRecipeRequest
 	if err := json.Unmarshal([]byte(requestJSON), &request); err != nil {
-		log.Println("Error parsing JSON from form-data:", err)
+		log.Println(utils.ErrReadingJsonFile, err)
 		response := response.MessageResponse{
-			Message:    "Error parsing JSON from form-data",
+			Message:    utils.ErrReadingJsonFile,
 			StatusCode: http.StatusBadRequest,
 			Status:     "ERROR",
 		}
@@ -567,7 +569,7 @@ func CreateRecipe(c *gin.Context) {
 	username, err := utils.GetusernameByUserID(uint(request.UserId))
 	if err != nil {
 		response := response.MessageResponse{
-			Message:    "Error getting user information",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -578,7 +580,7 @@ func CreateRecipe(c *gin.Context) {
 	imageFilename, err := utils.UploadFileToMinio(file, &request)
 	if err != nil {
 		response := response.MessageResponse{
-			Message:    "Error uploading image to Minio",
+			Message:    utils.ErrUploadImageMinio,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -606,7 +608,7 @@ func CreateRecipe(c *gin.Context) {
 
 	if err := config.DB.Create(&recipe).Error; err != nil {
 		response := response.MessageResponse{
-			Message:    "Terjadi kesalahan server. Silakan coba kembali",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -615,9 +617,8 @@ func CreateRecipe(c *gin.Context) {
 	}
 
 	// Respons berhasil
-	responseMessage := "Resep " + request.RecipeName + " berhasil ditambahkan!"
 	c.JSON(http.StatusOK, response.MessageResponse{
-		Message:    responseMessage,
+		Message:    fmt.Sprintf(utils.SuccCreateRecipe, request.RecipeName),
 		StatusCode: http.StatusOK,
 		Status:     "OK",
 	})
@@ -628,7 +629,7 @@ func UpdateRecipe(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		response := response.MessageResponse{
-			Message:    "Error reading file from form-data",
+			Message:    utils.ErrReadingFile,
 			StatusCode: http.StatusBadRequest,
 			Status:     "ERROR",
 		}
@@ -642,9 +643,9 @@ func UpdateRecipe(c *gin.Context) {
 		// Jika terdapat file dengan nama "request"
 		fileData, err := val.Open()
 		if err != nil {
-			log.Println("Error reading JSON file from form-data:", err)
+			log.Println(utils.ErrReadingJsonFile, err)
 			response := response.MessageResponse{
-				Message:    "Error reading JSON file from form-data",
+				Message:    utils.ErrReadingJsonFile,
 				StatusCode: http.StatusBadRequest,
 				Status:     "ERROR",
 			}
@@ -656,9 +657,9 @@ func UpdateRecipe(c *gin.Context) {
 		// Membaca isi file JSON
 		jsonBytes, err := io.ReadAll(fileData)
 		if err != nil {
-			log.Println("Error reading JSON from form-data:", err)
+			log.Println(utils.ErrReadingJsonFile, err)
 			response := response.MessageResponse{
-				Message:    "Error reading JSON from form-data",
+				Message:    utils.ErrReadingJsonFile,
 				StatusCode: http.StatusBadRequest,
 				Status:     "ERROR",
 			}
@@ -678,9 +679,9 @@ func UpdateRecipe(c *gin.Context) {
 	// Menguraikan data JSON menjadi struct atau model yang sesuai
 	var request request.UpdateRecipeRequest
 	if err := json.Unmarshal([]byte(requestJSON), &request); err != nil {
-		log.Println("Error parsing JSON from form-data:", err)
+		log.Println(utils.ErrReadingJsonFile, err)
 		response := response.MessageResponse{
-			Message:    "Error parsing JSON from form-data",
+			Message:    utils.ErrReadingJsonFile,
 			StatusCode: http.StatusBadRequest,
 			Status:     "ERROR",
 		}
@@ -692,7 +693,7 @@ func UpdateRecipe(c *gin.Context) {
 	username, err := utils.GetusernameByUserID(uint(request.UserID))
 	if err != nil {
 		response := response.MessageResponse{
-			Message:    "Error getting user information",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -705,7 +706,7 @@ func UpdateRecipe(c *gin.Context) {
 	if err := config.DB.Where("recipe_id = ? AND user_id = ?", request.RecipeID, request.UserID).First(&existingRecipe).Error; err != nil {
 		// Handle the error (e.g., recipe not found or not owned by the user)
 		response := response.MessageResponse{
-			Message:    "Recipe not found or unauthorized",
+			Message:    utils.ErrRecipeNotFound,
 			StatusCode: http.StatusNotFound,
 			Status:     "ERROR",
 		}
@@ -728,7 +729,7 @@ func UpdateRecipe(c *gin.Context) {
 	imageFilename, err := utils.UploadFileToMinio(file, &request)
 	if err != nil {
 		response := response.MessageResponse{
-			Message:    "Error uploading image to Minio",
+			Message:    utils.ErrUploadImageMinio,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -750,7 +751,7 @@ func UpdateRecipe(c *gin.Context) {
 	// Simpan perubahan ke database
 	if err := config.DB.Save(&existingRecipe).Error; err != nil {
 		response := response.MessageResponse{
-			Message:    "Terjadi kesalahan server. Silakan coba kembali",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -759,9 +760,8 @@ func UpdateRecipe(c *gin.Context) {
 	}
 
 	// Respons berhasil
-	responseMessage := "Resep " + request.RecipeName + " berhasil diperbarui!"
 	c.JSON(http.StatusOK, response.MessageResponse{
-		Message:    responseMessage,
+		Message:    fmt.Sprintf(utils.SuccUpdateRecipe, request.RecipeName),
 		StatusCode: http.StatusOK,
 		Status:     "OK",
 	})
@@ -788,11 +788,11 @@ func ToggleFavorite(c *gin.Context) {
 		response := response.DataResponse{
 			Total:      0,
 			Data:       nil,
-			Message:    "Terjadi kesalahan pada server. Silakan coba kembali.",
-			StatusCode: http.StatusBadRequest,
+			Message:    utils.ErrInternalServer,
+			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
-		c.JSON(http.StatusBadRequest, response)
+		c.JSON(http.StatusInternalServerError, response)
 		return
 	}
 
@@ -800,7 +800,7 @@ func ToggleFavorite(c *gin.Context) {
 	fullname, err := utils.GetFullnameByUserID(uint(userID))
 	if err != nil {
 		response := response.MessageResponse{
-			Message:    "Error getting user information",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -814,7 +814,7 @@ func ToggleFavorite(c *gin.Context) {
 		response := response.DataResponse{
 			Total:      0,
 			Data:       nil,
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusBadRequest,
 			Status:     "ERROR",
 		}
@@ -827,7 +827,7 @@ func ToggleFavorite(c *gin.Context) {
 	if err != nil {
 		response := response.DataResponse{
 			Total:      0,
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -847,7 +847,7 @@ func ToggleFavorite(c *gin.Context) {
 			response := response.DataResponse{
 				Total:      0,
 				Data:       nil,
-				Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+				Message:    utils.ErrInternalServer,
 				StatusCode: http.StatusInternalServerError,
 				Status:     "ERROR",
 			}
@@ -855,9 +855,10 @@ func ToggleFavorite(c *gin.Context) {
 			return
 		}
 
-		message := "Resep " + recipeName + " berhasil ditambahkan ke dalam favorit"
+		// message := "Resep " + recipeName + " berhasil ditambahkan ke dalam favorit"
+		message := fmt.Sprintf(utils.SuccAddFavorite, recipeName)
 		if !favoriteFood.IsFavorite {
-			message = "Resep " + recipeName + " berhasil dihapus dari favorit"
+			message = fmt.Sprintf(utils.SuccRemoveFavorite, recipeName)
 		}
 
 		response := response.DataResponse{
@@ -885,7 +886,7 @@ func ToggleFavorite(c *gin.Context) {
 		response := response.DataResponse{
 			Total:      0,
 			Data:       nil,
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -896,7 +897,7 @@ func ToggleFavorite(c *gin.Context) {
 	response := response.DataResponse{
 		Total:      1,
 		Data:       nil,
-		Message:    "Resep " + recipeName + " berhasil ditambahkan ke dalam favorit",
+		Message:    fmt.Sprintf(utils.SuccAddFavorite, recipeName),
 		StatusCode: http.StatusOK,
 		Status:     "OK",
 	}
@@ -922,7 +923,7 @@ func GetRecipeDetailsById(c *gin.Context) {
 		response := response.DataResponse{
 			Total:      0,
 			Data:       nil,
-			Message:    "Token tidak ditemukan",
+			Message:    utils.ErrUnauthorizedUser,
 			StatusCode: http.StatusUnauthorized,
 			Status:     "Unauthorized",
 		}
@@ -936,7 +937,7 @@ func GetRecipeDetailsById(c *gin.Context) {
 		response := response.DataResponse{
 			Total:      0,
 			Data:       nil,
-			Message:    "Token tidak valid",
+			Message:    utils.ErrUnauthorizedUser,
 			StatusCode: http.StatusUnauthorized,
 			Status:     "Unauthorized",
 		}
@@ -955,7 +956,7 @@ func GetRecipeDetailsById(c *gin.Context) {
 		response := response.DataResponse{
 			Total:      0,
 			Data:       nil,
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -967,7 +968,7 @@ func GetRecipeDetailsById(c *gin.Context) {
 		response := response.RecipeDetailsResponse{
 			Total:      0,
 			Data:       nil,
-			Message:    "Detil Resep masakan tidak tersedia",
+			Message:    utils.ErrDetailRecipeNotFound,
 			StatusCode: http.StatusNotFound,
 			Status:     "Not Found",
 		}
@@ -1010,7 +1011,7 @@ func GetRecipeDetailsById(c *gin.Context) {
 	response := response.RecipeDetailsResponse{
 		Total:      total,
 		Data:       data,
-		Message:    "Berhasil memuat Resep Masakan",
+		Message:    utils.SuccGetAllRecipe,
 		StatusCode: http.StatusOK,
 		Status:     "Success",
 	}
@@ -1025,7 +1026,7 @@ func DeleteMyRecipe(c *gin.Context) {
 	recipeIDInt, err := strconv.Atoi(recipeID)
 	if err != nil {
 		response := response.MyRecipeResponse{
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Details:    err.Error(),
 		}
@@ -1036,7 +1037,7 @@ func DeleteMyRecipe(c *gin.Context) {
 	userIDInt, err := strconv.Atoi(userID)
 	if err != nil {
 		response := response.MyRecipeResponse{
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Details:    err.Error(),
 		}
@@ -1048,7 +1049,7 @@ func DeleteMyRecipe(c *gin.Context) {
 	if err != nil {
 		response := response.DataResponse{
 			Total:      0,
-			Message:    "Terjadi kesalahan server. Silakan coba kembali.",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		}
@@ -1059,9 +1060,9 @@ func DeleteMyRecipe(c *gin.Context) {
 	err = config.DB.Where("recipe_id = ? AND user_id = ? AND is_deleted = ?", recipeIDInt, userIDInt, false).First(&existingRecipe).Error
 	if err != nil {
 		response := response.MyRecipeResponse{
-			Message:    "Data Already Deleted!",
+			Message:    utils.ErrDataAlreadyDeleted,
 			StatusCode: http.StatusBadRequest,
-			Details:    recipeName + " sudah terhapus!",
+			Details:    fmt.Sprintf(utils.SuccDeleteRecipe, recipeName),
 		}
 		c.JSON(http.StatusBadRequest, response)
 		return
@@ -1071,7 +1072,7 @@ func DeleteMyRecipe(c *gin.Context) {
 		Where("recipe_id = ? AND user_id = ?", recipeIDInt, userIDInt).Update("is_deleted", true).Error
 	if err != nil {
 		response := response.MyRecipeResponse{
-			Message:    "Terjadi kesalahan saat menghapus data.",
+			Message:    utils.ErrInternalServer,
 			StatusCode: http.StatusInternalServerError,
 			Details:    err.Error(),
 		}
@@ -1082,7 +1083,7 @@ func DeleteMyRecipe(c *gin.Context) {
 	response := response.RecipeDetailsResponse{
 		Total:      1,
 		Data:       nil,
-		Message:    "Resep " + recipeName + " berhasil dihapus!",
+		Message:    fmt.Sprintf(utils.SuccDeleteRecipe, recipeName),
 		StatusCode: http.StatusOK,
 		Status:     "OK",
 	}
