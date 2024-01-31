@@ -54,6 +54,26 @@ go run main.go
 compiledaemon --command="./book-recipe-be-go"
 ```
 
+### Using Docker
+
+#### Build Image
+
+```bash
+docker build --tag book-recipe-be-go .
+```
+
+#### Build Network
+
+```bash
+docker network create book-recipe-be-go-network
+```
+
+#### Build Container and Run
+
+```bash
+docker run -d -p 8080:8080 --name book-recipe-be-go --network book-recipe-be-go-network book-recipe-be-go
+```
+
 # Learn More
 
 You can learn more in the [Golang Documentation](https://go.dev/doc/)
