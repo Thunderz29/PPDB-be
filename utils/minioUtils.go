@@ -17,7 +17,7 @@ import (
 func UploadFileToMinio(file *multipart.FileHeader, recipeRequest interface{}) (string, error) {
 	minioClient, err := config.ConfigMinio()
 	if err != nil {
-		return "", fmt.Errorf("Failed to initialize MinIO client: %v", err)
+		return "", fmt.Errorf(ErrInitMinio, err)
 	}
 
 	ctx := context.Background()
@@ -44,18 +44,18 @@ func UploadFileToMinio(file *multipart.FileHeader, recipeRequest interface{}) (s
 		fileExtension = getFileExtension(file.Filename)
 		generatedFilename = fmt.Sprintf("%s_%s_%s_%s%s", recipeName, categoryName, levelName, timestamp, fileExtension)
 	default:
-		return "", fmt.Errorf("Unsupported request type")
+		return "", fmt.Errorf(ErrBadRequest)
 	}
 
 	fileData, err := file.Open()
 	if err != nil {
-		return "", fmt.Errorf("Failed to open file: %v", err)
+		return "", fmt.Errorf(ErrOpenFileMinio, err)
 	}
 	defer fileData.Close()
 
 	_, err = minioClient.PutObject(ctx, bucketName, generatedFilename, fileData, file.Size, minio.PutObjectOptions{})
 	if err != nil {
-		return "", fmt.Errorf("Failed to upload file to MinIO: %v", err)
+		return "", fmt.Errorf(ErrUploadImageMinio)
 	}
 
 	return generatedFilename, nil

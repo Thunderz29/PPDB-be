@@ -19,9 +19,15 @@ const (
 	ErrReadingFile = "Error reading/parsing file from form-data"
 	ErrReadingJsonFile = "Error reading/parsing JSON file from form-data"
 	ErrUploadImageMinio = "Gagal mengupload gambar ke MinIO!"
+	ErrOpenFileMinio = "Gagal membuka file: %v"
+	ErrInitMinio = "Gagal menginisiasi MinIO Client: %v"
 	ErrDetailRecipeNotFound = "Detil Resep masakan tidak tersedia"
-	ErrGetImageUrl = "Gagal mengambil image URL untuk recipeId: %s"
+	ErrGetImageUrl = "Gagal mengambil image URL"
 	ErrDataAlreadyDeleted = "Data sudah terhapus"
+	ErrParsingToken = "Error parsing token:"
+	ErrInvalidToken = "Token tidak valid"
+	ErrClaimToken = "Gagal mendapatkan klaim token"
+	ErrGetData = "Gagal mengambil data: "
     ErrorMessage    = "An error occurred: %s"
 )
 
@@ -38,6 +44,6 @@ const (
 	SuccRemoveFavorite = "Resep %s berhasil dihapus dari favorit"
 	SuccDeleteRecipe = "Resep %s berhasil dihapus!"
 	Success = "Pesan Sukses"
-    WelcomeMessagee  = "Welcome to our application!"
+    WelcomeMessagee  = "Server dimulai di port 8080"
     ErrorMessagee   = "An error occurred: %s"
 )

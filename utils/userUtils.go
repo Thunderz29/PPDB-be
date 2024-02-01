@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"strings"
-
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -22,7 +21,6 @@ func GetFullnameByUserID(userID uint) (string, error) {
 func GetUserIdFromToken(tokenString string) (int, error) {
 	// Load SECRET from environment variable
 	secretKey := os.Getenv("SECRET")
-    log.Println("Secret Key:", secretKey)
     log.Println("Received Token:", tokenString)
 
 	// Hapus "Bearer " dari awalan token
@@ -36,27 +34,27 @@ func GetUserIdFromToken(tokenString string) (int, error) {
 	})
 
 	if err != nil {
-        log.Println("Error parsing token:", err)
+        log.Println(ErrParsingToken, err)
 		return 0, err
 	}
 
 	// Verifikasi token
 	if !token.Valid {
-        log.Println("Token is not valid")
-		return 0, errors.New("Token tidak valid")
+        log.Println(ErrInvalidToken)
+		return 0, errors.New(ErrInvalidToken)
 	}
 
 	// Ambil nilai subject (sub) dari token
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-        log.Println("Failed to get token claims")
-		return 0, errors.New("Gagal mendapatkan klaim token")
+        log.Println(ErrClaimToken)
+		return 0, errors.New(ErrClaimToken)
 	}
 
 	subject, ok := claims["sub"].(float64)
 	if !ok {
-        log.Println("Claim 'sub' does not contain a valid subject")
-		return 0, errors.New("Klaim token tidak berisi subjek yang valid")
+        log.Println(ErrInvalidToken)
+		return 0, errors.New(ErrInvalidToken)
 	}
 
 	return int(subject), nil

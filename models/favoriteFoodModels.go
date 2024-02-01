@@ -7,7 +7,7 @@ import (
 type FavoriteFood struct {
 	UserID        int       `gorm:"primaryKey;column:user_id" json:"user_id"`
 	RecipeID      int       `gorm:"primaryKey;column:recipe_id" json:"recipe_id"`
-	IsFavorite    bool       `gorm:"column:is_favorite" json:"is_favorite"`
+	IsFavorite    bool       `gorm:"column:is_favorite;not null" json:"is_favorite"`
 	CreatedBy     string     `gorm:"column:created_by" json:"created_by"`
 	CreatedTime   time.Time  `gorm:"column:created_time" json:"created_time"`
 	ModifiedBy    string     `gorm:"column:modified_by" json:"modified_by"`

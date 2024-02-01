@@ -6,8 +6,8 @@ import (
 
 type Level struct {
 	LevelID      int      `gorm:"primaryKey;column:level_id" json:"level_id"`
-	LevelName    string    `gorm:"column:level_name" json:"level_name"`
-	IsDeleted    bool      `gorm:"column:is_deleted" json:"is_deleted"`
+	LevelName    string    `gorm:"column:level_name;not null" json:"level_name"`
+	IsDeleted    bool      `gorm:"column:is_deleted;not null" json:"is_deleted"`
 	CreatedBy    string    `gorm:"column:created_by" json:"created_by"`
 	CreatedTime  time.Time `gorm:"column:created_time" json:"created_time"`
 	ModifiedBy   string    `gorm:"column:modified_by" json:"modified_by"`

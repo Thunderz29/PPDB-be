@@ -25,12 +25,13 @@ func GetAllMyFavRecipes(c *gin.Context) {
 
 	minioClient, err := config.ConfigMinio()
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
 	if err := c.ShouldBindQuery(&recipeFilter); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println(utils.ErrBadRequest, err.Error())
 		return
 	}
 
@@ -56,6 +57,7 @@ func GetAllMyFavRecipes(c *gin.Context) {
 			Details:    utils.ErrUnauthorizedUser,
 		}
 		c.JSON(http.StatusUnauthorized, response)
+		log.Println(utils.ErrUnauthorizedUser)
 		return
 	}
 
@@ -68,6 +70,7 @@ func GetAllMyFavRecipes(c *gin.Context) {
 			Details:    utils.ErrUnauthorizedUser,
 		}
 		c.JSON(http.StatusUnauthorized, response)
+		log.Println(utils.ErrUnauthorizedUser)
 		return
 	}
 
@@ -92,6 +95,7 @@ func GetAllMyFavRecipes(c *gin.Context) {
 				Details:    utils.ErrBadRequest,
 			}
 			c.JSON(http.StatusBadRequest, response)
+			log.Println(utils.ErrBadRequest, utils.ErrTimeValidation)
 			return
 		}
 
@@ -119,6 +123,7 @@ func GetAllMyFavRecipes(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -127,7 +132,7 @@ func GetAllMyFavRecipes(c *gin.Context) {
 	for _, recipe := range recipes {
 		imageUrl, err := utils.GetImageURL(minioClient, recipe.ImageFilename)
 		if err != nil {
-			log.Println("Error getting image URL:", err)
+			log.Println(utils.ErrInternalServer, err.Error())
 			continue
 		}
 
@@ -151,6 +156,7 @@ func GetAllMyFavRecipes(c *gin.Context) {
 			Details:    utils.ErrDataNotFound,
 		}
 		c.JSON(http.StatusNotFound, response)
+		log.Println(utils.ErrDataNotFound)
 		return
 	}
 
@@ -162,6 +168,7 @@ func GetAllMyFavRecipes(c *gin.Context) {
 		Status:     "OK",
 	}
 	c.JSON(http.StatusOK, response)
+	log.Printf(response.Message)
 }
 
 
@@ -173,12 +180,13 @@ func GetAllMyRecipes(c *gin.Context) {
 
 	minioClient, err := config.ConfigMinio()
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
 	if err := c.ShouldBindQuery(&recipeFilter); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println(utils.ErrBadRequest, err.Error())
 		return
 	}
 
@@ -201,7 +209,8 @@ func GetAllMyRecipes(c *gin.Context) {
 			StatusCode: http.StatusUnauthorized,
 			Details:    utils.ErrUnauthorizedUser,
 		}
-		c.JSON(http.StatusBadRequest, response)
+		c.JSON(http.StatusUnauthorized, response)
+		log.Println(utils.ErrUnauthorizedUser)
 		return
 	}
 
@@ -221,6 +230,7 @@ func GetAllMyRecipes(c *gin.Context) {
 				Details:    utils.ErrBadRequest,
 			}
 			c.JSON(http.StatusBadRequest, response)
+			log.Println(utils.ErrBadRequest, utils.ErrTimeValidation)
 			return
 		}
 
@@ -242,6 +252,7 @@ func GetAllMyRecipes(c *gin.Context) {
 			Details:    err.Error(),
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -261,6 +272,7 @@ func GetAllMyRecipes(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -269,19 +281,19 @@ func GetAllMyRecipes(c *gin.Context) {
 	for _, recipe := range recipes {
 		categoryName, err := utils.GetCategoryName(recipe.Category.CategoryID)
 		if err != nil {
-			log.Println("Error fetching category name:", err)
+			log.Println(utils.ErrGetData, err)
 			categoryName = "Unknown Category"
 		}
 
 		levelName, err := utils.GetLevelName(recipe.Level.LevelID)
 		if err != nil {
-			log.Println("Error fetching level name:", err)
+			log.Println(utils.ErrGetData, err)
 			levelName = "Unknown Level"
 		}
 
 		imageUrl, err := utils.GetImageURL(minioClient, recipe.ImageFilename)
 		if err != nil {
-			log.Println("Error getting image URL:", err)
+			log.Println(utils.ErrGetImageUrl, err)
 			continue
 		}
 
@@ -307,6 +319,7 @@ func GetAllMyRecipes(c *gin.Context) {
 			Details:    utils.ErrDataNotFound,
 		}
 		c.JSON(http.StatusNotFound, response)
+		log.Println(utils.ErrRecipeNotFound)
 		return
 	}
 
@@ -318,6 +331,7 @@ func GetAllMyRecipes(c *gin.Context) {
 		Status:     "OK",
 	}
 	c.JSON(http.StatusOK, response)
+	log.Printf(response.Message)
 }
 
 func GetAllRecipes(c *gin.Context) {
@@ -327,12 +341,13 @@ func GetAllRecipes(c *gin.Context) {
 
 	minioClient, err := config.ConfigMinio()
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
 	if err := c.ShouldBindQuery(&recipeFilter); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println(utils.ErrBadRequest, err.Error())
 		return
 	}
 
@@ -355,7 +370,8 @@ func GetAllRecipes(c *gin.Context) {
 			StatusCode: http.StatusUnauthorized,
 			Status:     "ERROR",
 		}
-		c.JSON(http.StatusBadRequest, response)
+		c.JSON(http.StatusUnauthorized, response)
+		log.Println(utils.ErrUnauthorizedUser)
 		return
 	}
 
@@ -383,6 +399,7 @@ func GetAllRecipes(c *gin.Context) {
 						Status:     "ERROR",
 					}
 					c.JSON(http.StatusBadRequest, response)
+					log.Println(utils.ErrBadRequest, err.Error())
 					return
 				}
 
@@ -395,6 +412,7 @@ func GetAllRecipes(c *gin.Context) {
 						Status:     "ERROR",
 					}
 					c.JSON(http.StatusBadRequest, response)
+					log.Println(utils.ErrBadRequest, utils.ErrInvalidTimeCook)
 					return
 				}
 			} else {
@@ -404,6 +422,7 @@ func GetAllRecipes(c *gin.Context) {
 					Status:     "ERROR",
 				}
 				c.JSON(http.StatusBadRequest, response)
+				log.Println(utils.ErrBadRequest, utils.ErrTimeValidation)
 				return
 			}
 		}
@@ -424,6 +443,7 @@ func GetAllRecipes(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -432,19 +452,19 @@ func GetAllRecipes(c *gin.Context) {
 	for _, recipe := range recipes {
 		categoryName, err := utils.GetCategoryName(recipe.Category.CategoryID)
 		if err != nil {
-			log.Println("Error fetching category name:", err)
+			log.Println(utils.ErrGetData, err.Error())
 			categoryName = "Unknown Category"
 		}
 
 		levelName, err := utils.GetLevelName(recipe.Level.LevelID)
 		if err != nil {
-			log.Println("Error fetching level name:", err)
+			log.Println(utils.ErrGetData, err.Error())
 			levelName = "Unknown Level"
 		}
 
 		imageUrl, err := utils.GetImageURL(minioClient, recipe.ImageFilename)
 		if err != nil {
-			log.Println("Error getting image URL:", err)
+			log.Println(utils.ErrGetImageUrl, err.Error())
 			continue
 		}
 
@@ -456,6 +476,7 @@ func GetAllRecipes(c *gin.Context) {
 				Status:     "ERROR",
 			}
 			c.JSON(http.StatusBadRequest, response)
+			log.Println(utils.ErrBadRequest, err.Error())
 			return
 		}
 
@@ -481,6 +502,7 @@ func GetAllRecipes(c *gin.Context) {
 			Status:     "OK",
 		}
 		c.JSON(http.StatusNotFound, response)
+		log.Println(utils.ErrRecipeNotFound)
 		return
 	}
 
@@ -492,6 +514,7 @@ func GetAllRecipes(c *gin.Context) {
 		Status:     "Success",
 	}
 	c.JSON(http.StatusOK, response)
+	log.Printf(response.Message)
 }
 
 func CreateRecipe(c *gin.Context) {
@@ -503,6 +526,7 @@ func CreateRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, utils.ErrReadingFile)
 		return
 	}
 	
@@ -517,6 +541,7 @@ func CreateRecipe(c *gin.Context) {
 				Status:     "ERROR",
 			}
 			c.JSON(http.StatusBadRequest, response)
+			log.Println(utils.ErrBadRequest, utils.ErrReadingJsonFile)
 			return
 		}
 		defer fileData.Close()
@@ -531,6 +556,7 @@ func CreateRecipe(c *gin.Context) {
 				Status:     "ERROR",
 			}
 			c.JSON(http.StatusBadRequest, response)
+			log.Println(utils.ErrBadRequest, utils.ErrReadingJsonFile)
 			return
 		}
 
@@ -538,9 +564,6 @@ func CreateRecipe(c *gin.Context) {
 	} else {
 		requestJSON = c.PostForm("request")
 	}
-
-	// Log requestJSON
-	log.Println("Received JSON request:", requestJSON)
 
 	// Menguraikan data JSON menjadi struct atau model yang sesuai
 	var request request.CreateRecipeRequest
@@ -552,6 +575,7 @@ func CreateRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, utils.ErrReadingJsonFile)
 		return
 	}
 
@@ -574,6 +598,7 @@ func CreateRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -585,6 +610,7 @@ func CreateRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, utils.ErrUploadImageMinio)
 		return
 	}
 
@@ -613,15 +639,18 @@ func CreateRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
 	// Respons berhasil
-	c.JSON(http.StatusOK, response.MessageResponse{
+	response :=  response.MessageResponse{
 		Message:    fmt.Sprintf(utils.SuccCreateRecipe, request.RecipeName),
 		StatusCode: http.StatusOK,
 		Status:     "OK",
-	})
+	}
+	c.JSON(http.StatusOK,response)
+	log.Printf(response.Message)
 }
 
 func UpdateRecipe(c *gin.Context) {
@@ -634,6 +663,7 @@ func UpdateRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, utils.ErrReadingFile)
 		return
 	}
 
@@ -650,6 +680,7 @@ func UpdateRecipe(c *gin.Context) {
 				Status:     "ERROR",
 			}
 			c.JSON(http.StatusBadRequest, response)
+			log.Println(utils.ErrBadRequest, utils.ErrReadingJsonFile)
 			return
 		}
 		defer fileData.Close()
@@ -664,6 +695,7 @@ func UpdateRecipe(c *gin.Context) {
 				Status:     "ERROR",
 			}
 			c.JSON(http.StatusBadRequest, response)
+			log.Println(utils.ErrBadRequest, utils.ErrReadingJsonFile)
 			return
 		}
 
@@ -672,9 +704,6 @@ func UpdateRecipe(c *gin.Context) {
 		// Jika tidak terdapat file dengan nama "request"
 		requestJSON = c.PostForm("request")
 	}
-
-	// Log requestJSON
-	log.Println("Received JSON request:", requestJSON)
 
 	// Menguraikan data JSON menjadi struct atau model yang sesuai
 	var request request.UpdateRecipeRequest
@@ -686,6 +715,7 @@ func UpdateRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, utils.ErrReadingJsonFile)
 		return
 	}
 
@@ -698,6 +728,7 @@ func UpdateRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -711,6 +742,7 @@ func UpdateRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusNotFound, response)
+		log.Println(utils.ErrRecipeNotFound)
 		return
 	}
 
@@ -734,6 +766,7 @@ func UpdateRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, utils.ErrUploadImageMinio)
 		return
 	}
 
@@ -756,15 +789,19 @@ func UpdateRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
 	// Respons berhasil
-	c.JSON(http.StatusOK, response.MessageResponse{
+	response := response.MessageResponse{
 		Message:    fmt.Sprintf(utils.SuccUpdateRecipe, request.RecipeName),
 		StatusCode: http.StatusOK,
 		Status:     "OK",
-	})
+	}
+
+	c.JSON(http.StatusOK, response)
+	log.Printf(response.Message)
 }
 
 
@@ -780,6 +817,7 @@ func ToggleFavorite(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, err.Error())
 		return
 	}
 
@@ -793,6 +831,7 @@ func ToggleFavorite(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -805,6 +844,7 @@ func ToggleFavorite(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -814,11 +854,12 @@ func ToggleFavorite(c *gin.Context) {
 		response := response.DataResponse{
 			Total:      0,
 			Data:       nil,
-			Message:    utils.ErrInternalServer,
+			Message:    utils.ErrBadRequest,
 			StatusCode: http.StatusBadRequest,
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, err.Error())
 		return
 	}
 
@@ -832,6 +873,7 @@ func ToggleFavorite(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -852,6 +894,7 @@ func ToggleFavorite(c *gin.Context) {
 				Status:     "ERROR",
 			}
 			c.JSON(http.StatusInternalServerError, response)
+			log.Println(utils.ErrInternalServer, err.Error())
 			return
 		}
 
@@ -869,6 +912,7 @@ func ToggleFavorite(c *gin.Context) {
 			Status:     "OK",
 		}
 		c.JSON(http.StatusOK, response)
+		log.Printf(response.Message)
 		return
 	}
 
@@ -891,6 +935,7 @@ func ToggleFavorite(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -902,6 +947,7 @@ func ToggleFavorite(c *gin.Context) {
 		Status:     "OK",
 	}
 	c.JSON(http.StatusOK, response)
+	log.Printf(response.Message)
 }
 
 func GetRecipeDetailsById(c *gin.Context) {
@@ -911,7 +957,7 @@ func GetRecipeDetailsById(c *gin.Context) {
 
 	minioClient, err := config.ConfigMinio()
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -928,6 +974,7 @@ func GetRecipeDetailsById(c *gin.Context) {
 			Status:     "Unauthorized",
 		}
 		c.JSON(http.StatusUnauthorized, response)
+		log.Println(utils.ErrUnauthorizedUser)
 		return
 	}
 
@@ -942,6 +989,7 @@ func GetRecipeDetailsById(c *gin.Context) {
 			Status:     "Unauthorized",
 		}
 		c.JSON(http.StatusUnauthorized, response)
+		log.Println(utils.ErrUnauthorizedUser)
 		return
 	}
 
@@ -961,6 +1009,7 @@ func GetRecipeDetailsById(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -973,24 +1022,25 @@ func GetRecipeDetailsById(c *gin.Context) {
 			Status:     "Not Found",
 		}
 		c.JSON(http.StatusNotFound, response)
+		log.Println(utils.ErrDetailRecipeNotFound)
 		return
 	}
 
 	categoryName, err := utils.GetCategoryName(recipeDetails.Category.CategoryID)
 	if err != nil {
-		log.Println("Error fetching category name:", err)
+		log.Println(utils.ErrGetData, err.Error())
 		categoryName = "Unknown Category"
 	}
 
 	levelName, err := utils.GetLevelName(recipeDetails.Level.LevelID)
 	if err != nil {
-		log.Println("Error fetching level name:", err)
+		log.Println(utils.ErrGetData, err.Error())
 		levelName = "Unknown Level"
 	}
 
 	imageUrl, err := utils.GetImageURL(minioClient, recipeDetails.ImageFilename)
 	if err != nil {
-		log.Println("Error getting image URL:", err)
+		log.Println(utils.ErrGetImageUrl, err.Error())
 	}
 
 	isFavorite := utils.CheckFavoriteRecipe(uint(userId), recipeIDInt)
@@ -1016,6 +1066,7 @@ func GetRecipeDetailsById(c *gin.Context) {
 		Status:     "Success",
 	}
 	c.JSON(http.StatusOK, response)
+	log.Printf(response.Message)
 }
 
 func DeleteMyRecipe(c *gin.Context) {
@@ -1031,6 +1082,7 @@ func DeleteMyRecipe(c *gin.Context) {
 			Details:    err.Error(),
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -1042,6 +1094,7 @@ func DeleteMyRecipe(c *gin.Context) {
 			Details:    err.Error(),
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -1054,6 +1107,7 @@ func DeleteMyRecipe(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -1065,6 +1119,7 @@ func DeleteMyRecipe(c *gin.Context) {
 			Details:    fmt.Sprintf(utils.SuccDeleteRecipe, recipeName),
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, utils.ErrDataAlreadyDeleted)
 		return
 	}
 
@@ -1077,6 +1132,7 @@ func DeleteMyRecipe(c *gin.Context) {
 			Details:    err.Error(),
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -1088,5 +1144,5 @@ func DeleteMyRecipe(c *gin.Context) {
 		Status:     "OK",
 	}
 	c.JSON(http.StatusOK, response)
-
+	log.Printf(response.Message)
 }

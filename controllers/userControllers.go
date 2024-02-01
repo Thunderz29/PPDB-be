@@ -7,6 +7,7 @@ import (
 	"book-recipe-be-go/models/response"
 	"book-recipe-be-go/utils"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -25,6 +26,7 @@ func SignUp(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, err.Error())
 		return
 	}
 
@@ -35,6 +37,7 @@ func SignUp(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, utils.ErrUserAlreadyExist)
 		return
 	}
 
@@ -45,6 +48,7 @@ func SignUp(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, utils.ErrConfirmPassword)
 		return
 	}
 
@@ -55,6 +59,7 @@ func SignUp(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, utils.ErrValidatePassword)
 		return
 	}
 
@@ -66,6 +71,7 @@ func SignUp(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, utils.ErrHashPassword)
 		return
 	}
 
@@ -87,6 +93,7 @@ func SignUp(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, err.Error())
 		return
 	}
 
@@ -95,8 +102,8 @@ func SignUp(c *gin.Context) {
 		StatusCode: http.StatusOK,
 		Status:     "OK",
 	}
-
 	c.JSON(http.StatusOK, response)
+	log.Printf(response.Message)
 }
 
 func SignIn(c *gin.Context) {
@@ -108,6 +115,7 @@ func SignIn(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusBadRequest, response)
+		log.Println(utils.ErrBadRequest, err.Error())
 		return
 	}
 
@@ -119,6 +127,7 @@ func SignIn(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusUnauthorized, response)
+		log.Println(utils.ErrUserNotFound, err.Error())
 		return
 	}
 
@@ -131,6 +140,7 @@ func SignIn(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusUnauthorized, response)
+		log.Println(utils.ErrInvalidPassword, err.Error())
 		return
 	}
 
@@ -148,6 +158,7 @@ func SignIn(c *gin.Context) {
 			Status:     "ERROR",
 		}
 		c.JSON(http.StatusInternalServerError, response)
+		log.Println(utils.ErrInternalServer, utils.ErrCreateToken)
 		return
 	}
 
@@ -165,4 +176,5 @@ func SignIn(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, responseData)
+	log.Printf(responseData.Message)
 }

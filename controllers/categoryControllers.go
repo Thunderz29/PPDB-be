@@ -5,6 +5,7 @@ import (
 	"book-recipe-be-go/models"
 	"book-recipe-be-go/models/response"
 	"book-recipe-be-go/utils"
+	"log"
 	"net/http"
 	"github.com/gin-gonic/gin"
 )
@@ -20,6 +21,7 @@ func GetAllCategories(c *gin.Context) {
 			StatusCode: http.StatusInternalServerError,
 			Status:     "ERROR",
 		})
+		log.Println(utils.ErrInternalServer, result.Error.Error())
 		return
 	}
 
@@ -38,4 +40,5 @@ func GetAllCategories(c *gin.Context) {
 		StatusCode: http.StatusOK,
 		Status:     "Success",
 	})
+	log.Printf(utils.Success)
 }
