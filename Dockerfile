@@ -22,6 +22,6 @@ COPY --chown=appsuser:appuser .env /app/.env
 COPY --chown=appsuser:appuser app.log /app/app.log
 # Copy the executable.
 COPY --chown=appsuser:appuser --from=builder /app/book-recipe-be-go /app/book-recipe-be-go
-RUN chmod +x /app/book-recipe-be-go
+# RUN chmod +x /app/book-recipe-be-go
 
 CMD ["/app/book-recipe-be-go"]
