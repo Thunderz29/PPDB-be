@@ -1,31 +1,24 @@
 # Stage 1: Build the Go application
-FROM golang:1.21 AS builder
+FROM harbor.cloudias79.com/devops-tools/golang:1.21-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # Copy the entire project to the working directory
 COPY . .
 RUN go mod download
 RUN go mod verify
 # Build the Go application
-RUN CGO_ENABLED=0 GOOS=linux go build -o /book-recipe-be-go .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/book-recipe-be-go .
 
 # Stage 2: Create a minimal image to run the application
-FROM alpine:3.16
+FROM harbor.cloudias79.com/devops-tools/alpine:3.14.4
 
 WORKDIR /app
 
 # Copy the .env file
-COPY .env .
-
-RUN apk update
-
-# Import from builder.
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /etc/passwd /etc/passwd
+COPY .env .env
 
 # Copy the executable.
-COPY --from=builder /book-recipe-be-go /book-recipe-be-go
+COPY --from=builder /app/book-recipe-be-go /app/book-recipe-be-go
 
-ENTRYPOINT ["/book-recipe-be-go"]
+CMD ["/app/book-recipe-be-go"]
