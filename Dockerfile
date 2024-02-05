@@ -1,6 +1,5 @@
 # Stage 1: Build the Go application
 FROM harbor.cloudias79.com/devops-tools/golang:1.21-alpine AS builder
-
 WORKDIR /app
 
 # Copy the entire project to the working directory

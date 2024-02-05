@@ -29,7 +29,7 @@ func main() {
 
     log.Println(utils.WelcomeMessagee)
 
-    router.GET("/health", func(c *gin.Context) {
+    router.GET("/api/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status":"OK"})
 	})
 
