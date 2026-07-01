@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  ppdb-be:
+    image: ghcr.io/adrianeka/ppdb-be:latest
+    container_name: ppdb-be
+    restart: always
+    ports:
+      - "127.0.0.1:8080:8080"
+    env_file:
+      - .env
+    networks:
+      - ppdb-network
+
+networks:
+  ppdb-network:
+    external: true

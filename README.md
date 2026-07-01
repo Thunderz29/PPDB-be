@@ -77,7 +77,7 @@ docker run -d -p 8080:8080 --name book-recipe-be-go --network book-recipe-be-go-
 # URL Health Check
 
 ```bash
-http://localhost:8080/health
+http://localhost:8080/api/health
 ```
 
 # Learn More
