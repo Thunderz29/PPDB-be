@@ -1,0 +1,50 @@
+name: Deploy to VM
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.CR_PAT }}
+      - name: Build & Push
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          tags: ghcr.io/adrianeka/ppdb-be:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            cd ~/PPDB-be
+            
+            git pull origin development
+            
+            echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            docker compose up -d
+          
+            echo "Menunggu aplikasi melakukan booting..."
+            sleep 5
+            
+            curl -s --fail http://localhost:8080/api/health && echo "Health check BERHASIL!" || echo "Peringatan: Health check GAGAL."
