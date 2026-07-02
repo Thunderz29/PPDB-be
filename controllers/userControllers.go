@@ -59,7 +59,7 @@ func parseUserAgent(ua string) (platform, browser, device string) {
 }
 
 // @Summary Authenticate user and record session
-// @Description Authenticates a user with username and password, returns access token (1 day), refresh token (7 days), and records the session.
+// @Description Authenticates a user with email and password, returns access token (1 day), refresh token (7 days), and records the session.
 // @Tags Auth
 // @Accept json
 // @Produce json
@@ -77,13 +77,13 @@ func Login(c *gin.Context) {
 	}
 
 	var user models.User
-	if err := config.DB.Where("user_name = ? AND is_deleted = ?", req.UserName, false).First(&user).Error; err != nil {
-		utils.SendError(c, http.StatusUnauthorized, "Username atau password salah", nil)
+	if err := config.DB.Where("user_email = ? AND is_deleted = ?", req.Email, false).First(&user).Error; err != nil {
+		utils.SendError(c, http.StatusUnauthorized, "Email atau password salah", nil)
 		return
 	}
 
 	if err := utils.ComparePassword(user.UserPassword, req.Password); err != nil {
-		utils.SendError(c, http.StatusUnauthorized, "Username atau password salah", nil)
+		utils.SendError(c, http.StatusUnauthorized, "Email atau password salah", nil)
 		return
 	}
 

@@ -1,7 +1,7 @@
 package request
 
 type LoginRequest struct {
-	UserName string `json:"user_name" binding:"required"`
+	Email    string `json:"user_email" binding:"required,email"`
 	Password string `json:"user_password" binding:"required"`
 }
 
@@ -20,5 +20,5 @@ type UpdateUserRequest struct {
 	UserName     string  `json:"user_name" binding:"required"`
 	UserPhone    *string `json:"user_phone"`
 	UserEmail    string  `json:"user_email" binding:"required,email"`
-	UserPassword string  `json:"user_password"` // Optional on update
+	UserPassword string  `json:"user_password"`
 }

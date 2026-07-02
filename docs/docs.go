@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/login": {
             "post": {
-                "description": "Authenticates a user with username and password, returns access token (1 day), refresh token (7 days), and records the session.",
+                "description": "Authenticates a user with email and password, returns access token (1 day), refresh token (7 days), and records the session.",
                 "consumes": [
                     "application/json"
                 ],
@@ -503,11 +503,11 @@ const docTemplate = `{
         "request.LoginRequest": {
             "type": "object",
             "required": [
-                "user_name",
+                "user_email",
                 "user_password"
             ],
             "properties": {
-                "user_name": {
+                "user_email": {
                     "type": "string"
                 },
                 "user_password": {
@@ -536,7 +536,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_password": {
-                    "description": "Optional on update",
                     "type": "string"
                 },
                 "user_phone": {
