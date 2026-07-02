@@ -1,15 +1,27 @@
 package main
 
 import (
-	"book-recipe-be-go/config"
-	"book-recipe-be-go/middleware"
-	"book-recipe-be-go/utils"
+	"ppdb-be/config"
+	_ "ppdb-be/docs"
+	"ppdb-be/middleware"
+	"ppdb-be/routes"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// @title PPDB API
+// @version 1.0
+// @description API Server for PPDB Application
+// @host localhost:8080
+// @BasePath /api
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	logFile, err := config.InitLogger()
 	if err != nil {
@@ -17,28 +29,23 @@ func main() {
 	}
 	defer logFile.Close()
 
-	// Create a new Gin router
 	router := gin.New()
 
-	// Use CORS middleware
 	middleware.SetupCORS(router)
 
-	// Connect to the database
 	config.Connect()
+
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	router.GET("/api/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "OK"})
 	})
 
-	router.GET("/api/test-success", func(c *gin.Context) {
-		utils.SendSuccess(c, http.StatusOK, "Berhasil mengambil data uji", gin.H{"id": 1, "name": "PPDB Test"})
-	})
+	apiGroup := router.Group("/api")
+	{
+		routes.UserRoutes(apiGroup)
+	}
 
-	router.GET("/api/test-error", func(c *gin.Context) {
-		utils.SendError(c, http.StatusBadRequest, utils.MsgBadRequest, utils.ErrInvalidInput)
-	})
-
-	// Run the server on port 8080
 	err = router.Run(":8080")
 	if err != nil {
 		log.Println("Gagal menjalankan server:", err)

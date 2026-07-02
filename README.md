@@ -51,7 +51,7 @@ go run main.go
 ### Using Compile Daemon
 
 ```bash
-compiledaemon --command="./book-recipe-be-go"
+compiledaemon --command="./ppdb-be"
 ```
 
 ### Using Docker
@@ -59,19 +59,19 @@ compiledaemon --command="./book-recipe-be-go"
 #### Build Image
 
 ```bash
-docker build --tag book-recipe-be-go .
+docker build --tag ppdb-be .
 ```
 
 #### Build Network
 
 ```bash
-docker network create book-recipe-be-go-network
+docker network create ppdb-be-network
 ```
 
 #### Build Container and Run
 
 ```bash
-docker run -d -p 8080:8080 --name book-recipe-be-go --network book-recipe-be-go-network book-recipe-be-go
+docker run -d -p 8080:8080 --name ppdb-be --network ppdb-be-network ppdb-be
 ```
 
 # URL Health Check

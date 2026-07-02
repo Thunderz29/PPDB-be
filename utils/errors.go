@@ -2,7 +2,6 @@ package utils
 
 import "errors"
 
-// Predefined general error messages
 const (
 	MsgSuccess             = "Success"
 	MsgInternalServerError = "Terjadi kesalahan internal pada server"
@@ -13,7 +12,6 @@ const (
 	MsgValidationFailed    = "Validasi data gagal"
 )
 
-// Common error variables for internal logic checks
 var (
 	ErrNotFound      = errors.New("data tidak ditemukan")
 	ErrUnauthorized  = errors.New("akses tidak sah")
