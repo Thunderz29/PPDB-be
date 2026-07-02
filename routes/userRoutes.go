@@ -11,12 +11,17 @@ func UserRoutes(router *gin.RouterGroup) {
 	router.POST("/login", controllers.Login)
 	router.POST("/register", controllers.CreateUser)
 
-	protected := router.Group("/users")
+	protected := router.Group("")
 	protected.Use(middleware.AuthMiddleware())
 	{
-		protected.GET("", controllers.GetUsers)
-		protected.GET("/:id", controllers.GetUserByID)
-		protected.PUT("/:id", controllers.UpdateUser)
-		protected.DELETE("/:id", controllers.DeleteUser)
+		protected.POST("/logout", controllers.Logout)
+
+		users := protected.Group("/users")
+		{
+			users.GET("", controllers.GetUsers)
+			users.GET("/:id", controllers.GetUserByID)
+			users.PUT("/:id", controllers.UpdateUser)
+			users.DELETE("/:id", controllers.DeleteUser)
+		}
 	}
 }

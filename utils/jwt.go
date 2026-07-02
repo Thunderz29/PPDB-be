@@ -17,14 +17,14 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// GenerateToken generates a JWT token for a specific user
-func GenerateToken(userID int64, username, email string) (string, error) {
+// GenerateToken generates a JWT token for a specific user with custom expiry
+func GenerateToken(userID int64, username, email string, expiry time.Duration) (string, error) {
 	// Fallback key if SECRET is not set in environment
 	if len(jwtKey) == 0 {
 		jwtKey = []byte("default_jwt_secret_key_change_me")
 	}
 
-	expirationTime := time.Now().Add(24 * time.Hour)
+	expirationTime := time.Now().Add(expiry)
 	claims := &Claims{
 		UserID:   userID,
 		UserName: username,

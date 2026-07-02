@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/login": {
             "post": {
-                "description": "Authenticates a user with username and password, returns a JWT token",
+                "description": "Authenticates a user with username and password, returns access token (1 day), refresh token (7 days), and records the session.",
                 "consumes": [
                     "application/json"
                 ],
@@ -27,7 +27,7 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Authenticate user",
+                "summary": "Authenticate user and record session",
                 "parameters": [
                     {
                         "description": "Login Request Payload",
@@ -41,7 +41,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Success (contains token and user detail)",
+                        "description": "Success",
                         "schema": {
                             "allOf": [
                                 {
@@ -63,6 +63,46 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Logs out the user by revoking the active session associated with the Bearer token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout user and invalidate session",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response"
                         }
                     },
                     "401": {
@@ -410,21 +450,6 @@ const docTemplate = `{
         "models.User": {
             "type": "object",
             "properties": {
-                "created_by": {
-                    "type": "integer"
-                },
-                "created_on": {
-                    "type": "string"
-                },
-                "is_deleted": {
-                    "type": "boolean"
-                },
-                "last_modified_by": {
-                    "type": "integer"
-                },
-                "last_modified_on": {
-                    "type": "string"
-                },
                 "role_id": {
                     "type": "integer"
                 },

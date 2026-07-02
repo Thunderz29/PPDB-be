@@ -7,11 +7,11 @@ import (
 )
 
 type BaseModel struct {
-	CreatedBy      *int64     `gorm:"column:created_by" json:"created_by"`
-	CreatedOn      *time.Time `gorm:"column:created_on;type:timestamp(6)" json:"created_on"`
-	LastModifiedBy *int64     `gorm:"column:last_modified_by" json:"last_modified_by"`
-	LastModifiedOn *time.Time `gorm:"column:last_modified_on;type:timestamp(6)" json:"last_modified_on"`
-	IsDeleted      bool       `gorm:"column:is_deleted;default:false;not null" json:"is_deleted"`
+	CreatedBy      *int64     `gorm:"column:created_by" json:"-"`
+	CreatedOn      *time.Time `gorm:"column:created_on;type:timestamp(6)" json:"-"`
+	LastModifiedBy *int64     `gorm:"column:last_modified_by" json:"-"`
+	LastModifiedOn *time.Time `gorm:"column:last_modified_on;type:timestamp(6)" json:"-"`
+	IsDeleted      bool       `gorm:"column:is_deleted;default:false;not null" json:"-"`
 }
 
 func (b *BaseModel) BeforeCreate(tx *gorm.DB) error {
