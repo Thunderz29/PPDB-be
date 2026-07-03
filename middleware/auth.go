@@ -2,15 +2,14 @@ package middleware
 
 import (
 	"net/http"
-	"ppdb-be/config"
-	"ppdb-be/models"
+	"ppdb-be/repositories"
 	"ppdb-be/utils"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func AuthMiddleware() gin.HandlerFunc {
+func AuthMiddleware(sessionRepo repositories.SessionRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -34,8 +33,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		var session models.UserSession
-		if err := config.DB.WithContext(c).Where("access_token = ? AND is_active = ? AND is_revoked = ?", tokenStr, true, false).First(&session).Error; err != nil {
+		session, err := sessionRepo.FindActiveSessionByToken(c.Request.Context(), tokenStr)
+		if err != nil || session.IsRevoked {
 			utils.SendError(c, http.StatusUnauthorized, utils.MsgUnauthorized, "Sesi Anda telah berakhir atau login di perangkat lain, silakan login kembali")
 			c.Abort()
 			return

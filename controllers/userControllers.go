@@ -2,60 +2,33 @@ package controllers
 
 import (
 	"net/http"
-	"ppdb-be/config"
-	"ppdb-be/models"
 	"ppdb-be/models/request"
+	"ppdb-be/services"
 	"ppdb-be/utils"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-func parseUserAgent(ua string) (platform, browser, device string) {
-	if ua == "" {
-		return "Unknown", "Unknown", "Unknown"
-	}
-	lowerUA := strings.ToLower(ua)
+type UserController interface {
+	Login(c *gin.Context)
+	CreateUser(c *gin.Context)
+	GetUsers(c *gin.Context)
+	GetUserByID(c *gin.Context)
+	UpdateUser(c *gin.Context)
+	DeleteUser(c *gin.Context)
+	Logout(c *gin.Context)
+}
 
-	if strings.Contains(lowerUA, "edg") {
-		browser = "Edge"
-	} else if strings.Contains(lowerUA, "chrome") {
-		browser = "Chrome"
-	} else if strings.Contains(lowerUA, "firefox") {
-		browser = "Firefox"
-	} else if strings.Contains(lowerUA, "safari") {
-		browser = "Safari"
-	} else {
-		browser = "Unknown"
-	}
+type userController struct {
+	userService services.UserService
+}
 
-	if strings.Contains(lowerUA, "windows") {
-		platform = "Windows"
-		device = "PC"
-	} else if strings.Contains(lowerUA, "macintosh") || strings.Contains(lowerUA, "mac os") {
-		platform = "macOS"
-		device = "Mac"
-	} else if strings.Contains(lowerUA, "android") {
-		platform = "Android"
-		device = "Mobile"
-	} else if strings.Contains(lowerUA, "iphone") || strings.Contains(lowerUA, "ipad") {
-		platform = "iOS"
-		if strings.Contains(lowerUA, "ipad") {
-			device = "iPad"
-		} else {
-			device = "iPhone"
-		}
-	} else if strings.Contains(lowerUA, "linux") {
-		platform = "Linux"
-		device = "PC"
-	} else {
-		platform = "Unknown"
-		device = "Unknown"
+func NewUserController(userService services.UserService) UserController {
+	return &userController{
+		userService: userService,
 	}
-
-	return platform, browser, device
 }
 
 // @Summary Authenticate user and record session
@@ -69,77 +42,23 @@ func parseUserAgent(ua string) (platform, browser, device string) {
 // @Failure 401 {object} utils.ErrorResponse "Unauthorized"
 // @Failure 500 {object} utils.ErrorResponse "Internal Server Error"
 // @Router /login [post]
-func Login(c *gin.Context) {
+func (ctrl *userController) Login(c *gin.Context) {
 	var req request.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.SendError(c, http.StatusBadRequest, utils.MsgBadRequest, err)
 		return
 	}
 
-	var user models.User
-	if err := config.DB.Where("user_email = ? AND is_deleted = ?", req.Email, false).First(&user).Error; err != nil {
-		utils.SendError(c, http.StatusUnauthorized, "Email atau password salah", nil)
-		return
-	}
-
-	if err := utils.ComparePassword(user.UserPassword, req.Password); err != nil {
-		utils.SendError(c, http.StatusUnauthorized, "Email atau password salah", nil)
-		return
-	}
-
-	accessToken, err := utils.GenerateToken(user.UserID, user.UserName, user.UserEmail, 24*time.Hour)
-	if err != nil {
-		utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
-		return
-	}
-
-	refreshToken, err := utils.GenerateToken(user.UserID, user.UserName, user.UserEmail, 7*24*time.Hour)
-	if err != nil {
-		utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
-		return
-	}
-
-	ua := c.Request.UserAgent()
-	platform, browser, device := parseUserAgent(ua)
 	ip := c.ClientIP()
-	now := time.Now()
-	expiredAt := now.Add(7 * 24 * time.Hour)
+	ua := c.Request.UserAgent()
 
-	config.DB.WithContext(c).Model(&models.UserSession{}).
-		Where("user_id = ? AND is_active = ?", user.UserID, true).
-		Updates(map[string]interface{}{
-			"is_active":  false,
-			"is_revoked": true,
-			"logout_at":  &now,
-		})
-
-	session := models.UserSession{
-		UserID:       user.UserID,
-		AccessToken:  accessToken,
-		RefreshToken: &refreshToken,
-		LoginAt:      now,
-		ExpiredAt:    expiredAt,
-		IPAddress:    &ip,
-		UserAgent:    &ua,
-		DeviceName:   &device,
-		Platform:     &platform,
-		Browser:      &browser,
-		IsActive:     true,
-		IsRevoked:    false,
-		CreatedOn:    now,
-	}
-
-	if err := config.DB.WithContext(c).Create(&session).Error; err != nil {
-		utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
+	result, err := ctrl.userService.Login(c.Request.Context(), req.Email, req.Password, ip, ua)
+	if err != nil {
+		utils.SendError(c, http.StatusUnauthorized, err.Error(), nil)
 		return
 	}
 
-	utils.SendSuccess(c, http.StatusOK, "Login berhasil", gin.H{
-		"session_id":    session.SessionID,
-		"access_token":  accessToken,
-		"refresh_token": refreshToken,
-		"user":          user,
-	})
+	utils.SendSuccess(c, http.StatusOK, "Login berhasil", result)
 }
 
 // @Summary Register a new user
@@ -153,37 +72,20 @@ func Login(c *gin.Context) {
 // @Failure 409 {object} utils.ErrorResponse "Conflict"
 // @Failure 500 {object} utils.ErrorResponse "Internal Server Error"
 // @Router /register [post]
-func CreateUser(c *gin.Context) {
+func (ctrl *userController) CreateUser(c *gin.Context) {
 	var req request.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.SendError(c, http.StatusBadRequest, utils.MsgBadRequest, err)
 		return
 	}
 
-	var count int64
-	config.DB.Model(&models.User{}).Where("(user_name = ? OR user_email = ?) AND is_deleted = ?", req.UserName, req.UserEmail, false).Count(&count)
-	if count > 0 {
-		utils.SendError(c, http.StatusConflict, "Username atau Email sudah terdaftar", nil)
-		return
-	}
-
-	hashedPassword, err := utils.HashPassword(req.UserPassword)
+	user, err := ctrl.userService.CreateUser(c.Request.Context(), &req)
 	if err != nil {
-		utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
-		return
-	}
-
-	user := models.User{
-		RoleID:       req.RoleID,
-		UserFullName: req.UserFullName,
-		UserName:     req.UserName,
-		UserPhone:    req.UserPhone,
-		UserEmail:    req.UserEmail,
-		UserPassword: hashedPassword,
-	}
-
-	if err := config.DB.WithContext(c).Create(&user).Error; err != nil {
-		utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
+		if strings.Contains(err.Error(), "sudah terdaftar") {
+			utils.SendError(c, http.StatusConflict, err.Error(), nil)
+		} else {
+			utils.SendError(c, http.StatusInternalServerError, err.Error(), nil)
+		}
 		return
 	}
 
@@ -200,9 +102,9 @@ func CreateUser(c *gin.Context) {
 // @Failure 401 {object} utils.ErrorResponse "Unauthorized"
 // @Failure 500 {object} utils.ErrorResponse "Internal Server Error"
 // @Router /users [get]
-func GetUsers(c *gin.Context) {
-	var users []models.User
-	if err := config.DB.Where("is_deleted = ?", false).Find(&users).Error; err != nil {
+func (ctrl *userController) GetUsers(c *gin.Context) {
+	users, err := ctrl.userService.GetUsers(c.Request.Context())
+	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
 		return
 	}
@@ -222,7 +124,7 @@ func GetUsers(c *gin.Context) {
 // @Failure 401 {object} utils.ErrorResponse "Unauthorized"
 // @Failure 404 {object} utils.ErrorResponse "Not Found"
 // @Router /users/{id} [get]
-func GetUserByID(c *gin.Context) {
+func (ctrl *userController) GetUserByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -230,8 +132,8 @@ func GetUserByID(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := config.DB.Where("user_id = ? AND is_deleted = ?", id, false).First(&user).Error; err != nil {
+	user, err := ctrl.userService.GetUserByID(c.Request.Context(), id)
+	if err != nil {
 		utils.SendError(c, http.StatusNotFound, utils.MsgNotFound, nil)
 		return
 	}
@@ -253,7 +155,7 @@ func GetUserByID(c *gin.Context) {
 // @Failure 404 {object} utils.ErrorResponse "Not Found"
 // @Failure 500 {object} utils.ErrorResponse "Internal Server Error"
 // @Router /users/{id} [put]
-func UpdateUser(c *gin.Context) {
+func (ctrl *userController) UpdateUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -267,29 +169,13 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := config.DB.Where("user_id = ? AND is_deleted = ?", id, false).First(&user).Error; err != nil {
-		utils.SendError(c, http.StatusNotFound, utils.MsgNotFound, nil)
-		return
-	}
-
-	user.RoleID = req.RoleID
-	user.UserFullName = req.UserFullName
-	user.UserName = req.UserName
-	user.UserPhone = req.UserPhone
-	user.UserEmail = req.UserEmail
-
-	if req.UserPassword != "" {
-		hashed, err := utils.HashPassword(req.UserPassword)
-		if err != nil {
+	user, err := ctrl.userService.UpdateUser(c.Request.Context(), id, &req)
+	if err != nil {
+		if err.Error() == "User tidak ditemukan" {
+			utils.SendError(c, http.StatusNotFound, utils.MsgNotFound, nil)
+		} else {
 			utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
-			return
 		}
-		user.UserPassword = hashed
-	}
-
-	if err := config.DB.WithContext(c).Save(&user).Error; err != nil {
-		utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
 		return
 	}
 
@@ -309,7 +195,7 @@ func UpdateUser(c *gin.Context) {
 // @Failure 404 {object} utils.ErrorResponse "Not Found"
 // @Failure 500 {object} utils.ErrorResponse "Internal Server Error"
 // @Router /users/{id} [delete]
-func DeleteUser(c *gin.Context) {
+func (ctrl *userController) DeleteUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -317,16 +203,12 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := config.DB.Where("user_id = ? AND is_deleted = ?", id, false).First(&user).Error; err != nil {
-		utils.SendError(c, http.StatusNotFound, utils.MsgNotFound, nil)
-		return
-	}
-
-	user.IsDeleted = true
-
-	if err := config.DB.WithContext(c).Save(&user).Error; err != nil {
-		utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
+	if err := ctrl.userService.DeleteUser(c.Request.Context(), id); err != nil {
+		if err.Error() == "User tidak ditemukan" {
+			utils.SendError(c, http.StatusNotFound, utils.MsgNotFound, nil)
+		} else {
+			utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
+		}
 		return
 	}
 
@@ -343,7 +225,7 @@ func DeleteUser(c *gin.Context) {
 // @Failure 401 {object} utils.ErrorResponse "Unauthorized"
 // @Failure 500 {object} utils.ErrorResponse "Internal Server Error"
 // @Router /logout [post]
-func Logout(c *gin.Context) {
+func (ctrl *userController) Logout(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
 		utils.SendError(c, http.StatusBadRequest, utils.MsgBadRequest, "Authorization header is required")
@@ -357,22 +239,10 @@ func Logout(c *gin.Context) {
 	}
 	tokenStr := parts[1]
 
-	var session models.UserSession
-	if err := config.DB.WithContext(c).Where("access_token = ? AND is_active = ?", tokenStr, true).First(&session).Error; err != nil {
-		utils.SendSuccess(c, http.StatusOK, "Logout berhasil", nil)
-		return
-	}
-
-	now := time.Now()
-	session.IsActive = false
-	session.IsRevoked = true
-	session.LogoutAt = &now
-
-	if err := config.DB.WithContext(c).Save(&session).Error; err != nil {
+	if err := ctrl.userService.Logout(c.Request.Context(), tokenStr); err != nil {
 		utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
 		return
 	}
 
 	utils.SendSuccess(c, http.StatusOK, "Logout berhasil", nil)
 }
-

@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,6 +19,7 @@ type ErrorResponse struct {
 }
 
 func SendSuccess(c *gin.Context, statusCode int, message string, data interface{}) {
+	c.Set("res_msg", message)
 	c.JSON(statusCode, Response{
 		Success: true,
 		Message: message,
@@ -28,10 +31,13 @@ func SendError(c *gin.Context, statusCode int, message string, errs interface{})
 	var detail interface{}
 	if err, ok := errs.(error); ok {
 		detail = err.Error()
-	} else {
+		c.Set("res_err", err.Error())
+	} else if errs != nil {
 		detail = errs
+		c.Set("res_err", fmt.Sprintf("%v", errs))
 	}
 
+	c.Set("res_msg", message)
 	c.JSON(statusCode, ErrorResponse{
 		Success: false,
 		Message: message,

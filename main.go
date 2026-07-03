@@ -1,12 +1,15 @@
 package main
 
 import (
+	"log/slog"
+	"net/http"
 	"ppdb-be/config"
+	"ppdb-be/controllers"
 	_ "ppdb-be/docs"
 	"ppdb-be/middleware"
+	"ppdb-be/repositories"
 	"ppdb-be/routes"
-	"log"
-	"net/http"
+	"ppdb-be/services"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -22,32 +25,45 @@ import (
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-func main() {
-	logFile, err := config.InitLogger()
-	if err != nil {
-		log.Println("Gagal menginisialisasi logger:", err)
-	}
-	defer logFile.Close()
 
+// HealthCheck godoc
+// @Summary Check server status
+// @Description Endpoint to check if the server is running and ready to accept requests.
+// @Tags System
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Status OK"
+// @Router /health [get]
+func HealthCheck(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "OK", "message": "Server PPDB Berjalan Lancar"})
+}
+func main() {
+	config.InitLogger()
+
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(middleware.LoggerMiddleware())
 
 	middleware.SetupCORS(router)
 
 	config.Connect()
 
+	userRepo := repositories.NewUserRepository(config.DB)
+	sessionRepo := repositories.NewSessionRepository(config.DB)
+	userService := services.NewUserService(userRepo, sessionRepo)
+	userController := controllers.NewUserController(userService)
+
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	router.GET("/api/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "OK"})
-	})
+	router.GET("/api/health", HealthCheck)
 
 	apiGroup := router.Group("/api")
 	{
-		routes.UserRoutes(apiGroup)
+		routes.UserRoutes(apiGroup, userController, sessionRepo)
 	}
 
-	err = router.Run(":8080")
+	err := router.Run(":8080")
 	if err != nil {
-		log.Println("Gagal menjalankan server:", err)
+		slog.Error("Gagal menjalankan server:", "error", err)
 	}
 }

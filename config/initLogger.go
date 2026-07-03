@@ -1,19 +1,19 @@
 package config
 
 import (
-	"log"
+	"log/slog"
 	"os"
 )
 
-func InitLogger() (*os.File, error) {
-	// Buat atau buka file log
-	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatal("Gagal membuka file log:", err)
-	}
+func InitLogger() {
+	// Create text handler or json handler
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
 
-	// Set output log ke file
-	log.SetOutput(file)
+	// Set default slog output
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
 
-	return file, err
+	slog.Info("Slog logger initialized")
 }

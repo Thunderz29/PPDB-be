@@ -88,6 +88,21 @@ info:
   title: PPDB API
   version: "1.0"
 paths:
+  /health:
+    get:
+      description: Endpoint to check if the server is running and ready to accept
+        requests.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Check server status
+      tags:
+      - System
   /login:
     post:
       consumes:
