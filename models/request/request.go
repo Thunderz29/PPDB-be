@@ -1,52 +1,24 @@
 package request
 
-import "book-recipe-be-go/models/response"
-
-type RegisterRequest struct {
-	Username       string `json:"username" binding:"required"`
-	Fullname       string `json:"fullname" binding:"required"`
-	Password       string `json:"password" binding:"required"`
-	RetypePassword string `json:"retypePassword" binding:"required"`
+type LoginRequest struct {
+	Email    string `json:"user_email" binding:"required,email"`
+	Password string `json:"user_password" binding:"required"`
 }
 
-type ToggleFavoriteRequest struct {
-	UserId string `json:"userId" binding:"required"`
+type CreateUserRequest struct {
+	RoleID       *int64  `json:"role_id"`
+	UserFullName string  `json:"user_full_name" binding:"required"`
+	UserName     string  `json:"user_name" binding:"required"`
+	UserPhone    *string `json:"user_phone"`
+	UserEmail    string  `json:"user_email" binding:"required,email"`
+	UserPassword string  `json:"user_password" binding:"required,min=6"`
 }
 
-type SignInRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
-
-type CreateRecipeRequest struct {
-	UserId     int                   `json:"userId" binding:"required"`
-	RecipeName string                `json:"recipeName" binding:"required"`
-	Categories response.CategoryInfo `json:"categories" binding:"required"`
-	Levels     response.LevelInfo    `json:"levels" binding:"required"`
-	TimeCook   int                   `json:"timeCook" binding:"required"`
-	Ingridient string                `json:"ingridient" binding:"required"`
-	HowToCook  string                `json:"howToCook" binding:"required"`
-}
-
-type RecipeFilter struct {
-	PageNumber string `form:"pageNumber"`
-	PageSize   string `form:"pageSize"`
-	RecipeName string `form:"recipeName"`
-	LevelID    string `form:"levelId"`
-	CategoryID string `form:"categoryId"`
-	Time       string `form:"time"`
-	SortBy     string `form:"sortBy"`
-	UserID     string `form:"userId"`
-}
-
-type UpdateRecipeRequest struct {
-	RecipeID      int           `json:"recipeId" binding:"required"`
-	Categories  response.CategoryInfo `json:"categories" binding:"required"`
-	Levels      response.LevelInfo    `json:"levels" binding:"required"`
-	UserID        int           `json:"userId" binding:"required"`
-	RecipeName    string        `json:"recipeName" binding:"required"`
-	ImageFilename string        `json:"imageFilename" binding:"required"`
-	TimeCook      int          `json:"timeCook" binding:"required"`
-	Ingridient    string        `json:"ingridient" binding:"required"`
-	HowToCook     string        `json:"howToCook" binding:"required"`
+type UpdateUserRequest struct {
+	RoleID       *int64  `json:"role_id"`
+	UserFullName string  `json:"user_full_name" binding:"required"`
+	UserName     string  `json:"user_name" binding:"required"`
+	UserPhone    *string `json:"user_phone"`
+	UserEmail    string  `json:"user_email" binding:"required,email"`
+	UserPassword string  `json:"user_password"`
 }
