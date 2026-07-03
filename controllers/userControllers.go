@@ -45,7 +45,7 @@ func NewUserController(userService services.UserService) UserController {
 func (ctrl *userController) Login(c *gin.Context) {
 	var req request.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.SendError(c, http.StatusBadRequest, utils.MsgBadRequest, err)
+		utils.SendErrorMsg(c, http.StatusBadRequest, utils.MsgErrBadRequest, err)
 		return
 	}
 
@@ -54,11 +54,11 @@ func (ctrl *userController) Login(c *gin.Context) {
 
 	result, err := ctrl.userService.Login(c.Request.Context(), req.Email, req.Password, ip, ua)
 	if err != nil {
-		utils.SendError(c, http.StatusUnauthorized, err.Error(), nil)
+		utils.SendErrorMsg(c, http.StatusUnauthorized, utils.MsgErrAuth, err.Error())
 		return
 	}
 
-	utils.SendSuccess(c, http.StatusOK, "Login berhasil", result)
+	utils.SendSuccessMsg(c, http.StatusOK, utils.MsgSuccessLogin, result)
 }
 
 // @Summary Register a new user
@@ -75,21 +75,21 @@ func (ctrl *userController) Login(c *gin.Context) {
 func (ctrl *userController) CreateUser(c *gin.Context) {
 	var req request.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.SendError(c, http.StatusBadRequest, utils.MsgBadRequest, err)
+		utils.SendErrorMsg(c, http.StatusBadRequest, utils.MsgErrBadRequest, err)
 		return
 	}
 
 	user, err := ctrl.userService.CreateUser(c.Request.Context(), &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "sudah terdaftar") {
-			utils.SendError(c, http.StatusConflict, err.Error(), nil)
+			utils.SendErrorMsg(c, http.StatusConflict, utils.MsgErrBadRequest, err.Error())
 		} else {
-			utils.SendError(c, http.StatusInternalServerError, err.Error(), nil)
+			utils.SendErrorMsg(c, http.StatusInternalServerError, utils.MsgErrInternal, err.Error())
 		}
 		return
 	}
 
-	utils.SendSuccess(c, http.StatusCreated, "User berhasil dibuat", user)
+	utils.SendSuccessMsg(c, http.StatusCreated, utils.MsgSuccessCreate, user)
 }
 
 // @Summary List all users
@@ -105,11 +105,11 @@ func (ctrl *userController) CreateUser(c *gin.Context) {
 func (ctrl *userController) GetUsers(c *gin.Context) {
 	users, err := ctrl.userService.GetUsers(c.Request.Context())
 	if err != nil {
-		utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
+		utils.SendErrorMsg(c, http.StatusInternalServerError, utils.MsgErrInternal, err)
 		return
 	}
 
-	utils.SendSuccess(c, http.StatusOK, "Berhasil mengambil daftar user", users)
+	utils.SendSuccessMsg(c, http.StatusOK, utils.MsgSuccessFetch, users)
 }
 
 // @Summary Get user by ID
@@ -128,17 +128,17 @@ func (ctrl *userController) GetUserByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		utils.SendError(c, http.StatusBadRequest, "ID user tidak valid", nil)
+		utils.SendErrorMsg(c, http.StatusBadRequest, utils.MsgErrInvalidID, nil)
 		return
 	}
 
 	user, err := ctrl.userService.GetUserByID(c.Request.Context(), id)
 	if err != nil {
-		utils.SendError(c, http.StatusNotFound, utils.MsgNotFound, nil)
+		utils.SendErrorMsg(c, http.StatusNotFound, utils.MsgErrNotFound, nil)
 		return
 	}
 
-	utils.SendSuccess(c, http.StatusOK, "Berhasil mengambil detail user", user)
+	utils.SendSuccessMsg(c, http.StatusOK, utils.MsgSuccessFetch, user)
 }
 
 // @Summary Update user details
@@ -159,27 +159,27 @@ func (ctrl *userController) UpdateUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		utils.SendError(c, http.StatusBadRequest, "ID user tidak valid", nil)
+		utils.SendErrorMsg(c, http.StatusBadRequest, utils.MsgErrInvalidID, nil)
 		return
 	}
 
 	var req request.UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.SendError(c, http.StatusBadRequest, utils.MsgBadRequest, err)
+		utils.SendErrorMsg(c, http.StatusBadRequest, utils.MsgErrBadRequest, err)
 		return
 	}
 
 	user, err := ctrl.userService.UpdateUser(c.Request.Context(), id, &req)
 	if err != nil {
 		if err.Error() == "User tidak ditemukan" {
-			utils.SendError(c, http.StatusNotFound, utils.MsgNotFound, nil)
+			utils.SendErrorMsg(c, http.StatusNotFound, utils.MsgErrNotFound, nil)
 		} else {
-			utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
+			utils.SendErrorMsg(c, http.StatusInternalServerError, utils.MsgErrInternal, err)
 		}
 		return
 	}
 
-	utils.SendSuccess(c, http.StatusOK, "User berhasil diperbarui", user)
+	utils.SendSuccessMsg(c, http.StatusOK, utils.MsgSuccessUpdate, user)
 }
 
 // @Summary Soft delete user
@@ -199,20 +199,20 @@ func (ctrl *userController) DeleteUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		utils.SendError(c, http.StatusBadRequest, "ID user tidak valid", nil)
+		utils.SendErrorMsg(c, http.StatusBadRequest, utils.MsgErrInvalidID, nil)
 		return
 	}
 
 	if err := ctrl.userService.DeleteUser(c.Request.Context(), id); err != nil {
 		if err.Error() == "User tidak ditemukan" {
-			utils.SendError(c, http.StatusNotFound, utils.MsgNotFound, nil)
+			utils.SendErrorMsg(c, http.StatusNotFound, utils.MsgErrNotFound, nil)
 		} else {
-			utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
+			utils.SendErrorMsg(c, http.StatusInternalServerError, utils.MsgErrInternal, err)
 		}
 		return
 	}
 
-	utils.SendSuccess(c, http.StatusOK, "User berhasil dihapus", nil)
+	utils.SendSuccessMsg(c, http.StatusOK, utils.MsgSuccessDelete, nil)
 }
 
 // @Summary Logout user and invalidate session
@@ -228,21 +228,21 @@ func (ctrl *userController) DeleteUser(c *gin.Context) {
 func (ctrl *userController) Logout(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
-		utils.SendError(c, http.StatusBadRequest, utils.MsgBadRequest, "Authorization header is required")
+		utils.SendErrorMsg(c, http.StatusBadRequest, utils.MsgErrBadRequest, "Authorization header is required")
 		return
 	}
 
 	parts := strings.SplitN(authHeader, " ", 2)
 	if len(parts) != 2 || parts[0] != "Bearer" {
-		utils.SendError(c, http.StatusBadRequest, utils.MsgBadRequest, "Invalid token format")
+		utils.SendErrorMsg(c, http.StatusBadRequest, utils.MsgErrBadRequest, "Invalid token format")
 		return
 	}
 	tokenStr := parts[1]
 
 	if err := ctrl.userService.Logout(c.Request.Context(), tokenStr); err != nil {
-		utils.SendError(c, http.StatusInternalServerError, utils.MsgInternalServerError, err)
+		utils.SendErrorMsg(c, http.StatusInternalServerError, utils.MsgErrInternal, err)
 		return
 	}
 
-	utils.SendSuccess(c, http.StatusOK, "Logout berhasil", nil)
+	utils.SendSuccessMsg(c, http.StatusOK, utils.MsgSuccessLogout, nil)
 }

@@ -44,3 +44,15 @@ func SendError(c *gin.Context, statusCode int, message string, errs interface{})
 		Errors:  detail,
 	})
 }
+
+func SendSuccessMsg(c *gin.Context, statusCode int, msgKey string, data interface{}) {
+	lang := c.GetHeader("Accept-Language")
+	message := GetMsg(msgKey, lang)
+	SendSuccess(c, statusCode, message, data)
+}
+
+func SendErrorMsg(c *gin.Context, statusCode int, msgKey string, errs interface{}) {
+	lang := c.GetHeader("Accept-Language")
+	message := GetMsg(msgKey, lang)
+	SendError(c, statusCode, message, errs)
+}
