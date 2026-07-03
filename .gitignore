@@ -1,2 +1,39 @@
+# Binaries
+ppdb-be.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+
+# Environment Variables
 .env
-docs/
+.env.local
+
+# Logs
+*.log
+app.log
+
+# IDEs & Editor
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Agent / AI Tools
+.agents/
+skills-lock.json
+
+# Go Workspace & Mod
+vendor/
+go.work
+go.work.sum
+
+# Temporary / CompileDaemon
+tmp/
+build/
+

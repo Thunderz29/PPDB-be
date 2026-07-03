@@ -4,24 +4,26 @@ import (
 	"ppdb-be/controllers"
 	"ppdb-be/middleware"
 
+	"ppdb-be/repositories"
+
 	"github.com/gin-gonic/gin"
 )
 
-func UserRoutes(router *gin.RouterGroup) {
-	router.POST("/login", controllers.Login)
-	router.POST("/register", controllers.CreateUser)
+func UserRoutes(router *gin.RouterGroup, userCtrl controllers.UserController, sessionRepo repositories.SessionRepository) {
+	router.POST("/login", userCtrl.Login)
+	router.POST("/register", userCtrl.CreateUser)
 
 	protected := router.Group("")
-	protected.Use(middleware.AuthMiddleware())
+	protected.Use(middleware.AuthMiddleware(sessionRepo))
 	{
-		protected.POST("/logout", controllers.Logout)
+		protected.POST("/logout", userCtrl.Logout)
 
 		users := protected.Group("/users")
 		{
-			users.GET("", controllers.GetUsers)
-			users.GET("/:id", controllers.GetUserByID)
-			users.PUT("/:id", controllers.UpdateUser)
-			users.DELETE("/:id", controllers.DeleteUser)
+			users.GET("", userCtrl.GetUsers)
+			users.GET("/:id", userCtrl.GetUserByID)
+			users.PUT("/:id", userCtrl.UpdateUser)
+			users.DELETE("/:id", userCtrl.DeleteUser)
 		}
 	}
 }
