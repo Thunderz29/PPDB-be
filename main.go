@@ -53,6 +53,22 @@ func main() {
 	userService := services.NewUserService(userRepo, sessionRepo)
 	userController := controllers.NewUserController(userService)
 
+	roleRepo := repositories.NewRoleRepository(config.DB)
+	roleService := services.NewRoleService(roleRepo)
+	roleController := controllers.NewRoleController(roleService)
+
+	profileRepo := repositories.NewSchoolProfileRepository(config.DB)
+	profileService := services.NewSchoolProfileService(profileRepo)
+	profileController := controllers.NewSchoolProfileController(profileService)
+
+	configRepo := repositories.NewConfigRepository(config.DB)
+	configService := services.NewConfigService(configRepo)
+	configController := controllers.NewConfigController(configService)
+
+	schoolRepo := repositories.NewMasterSchoolRepository(config.DB)
+	schoolService := services.NewMasterSchoolService(schoolRepo)
+	schoolController := controllers.NewMasterSchoolController(schoolService)
+
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	router.GET("/api/health", HealthCheck)
@@ -60,6 +76,7 @@ func main() {
 	apiGroup := router.Group("/api")
 	{
 		routes.UserRoutes(apiGroup, userController, sessionRepo)
+		routes.MasterRoutes(apiGroup, roleController, profileController, configController, schoolController, sessionRepo)
 	}
 
 	err := router.Run(":8080")

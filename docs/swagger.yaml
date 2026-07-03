@@ -1,5 +1,170 @@
 basePath: /api
 definitions:
+  models.MasterSchool:
+    properties:
+      alamat_smp:
+        type: string
+      nama_smp:
+        type: string
+      smp_id:
+        type: integer
+    type: object
+  models.MasterSchoolRequest:
+    properties:
+      alamat_smp:
+        maxLength: 255
+        type: string
+      nama_smp:
+        maxLength: 255
+        type: string
+    required:
+    - alamat_smp
+    - nama_smp
+    type: object
+  models.Parameter:
+    properties:
+      biaya_pendaftaran:
+        type: number
+      matpel_ujian1:
+        type: integer
+      matpel_ujian2:
+        type: integer
+      matpel_ujian3:
+        type: integer
+      matpel_ujian4:
+        type: integer
+      param_id:
+        type: integer
+      tahun_ajar:
+        type: string
+      tgl_param:
+        type: string
+      ups:
+        type: number
+      usm:
+        type: number
+    type: object
+  models.ParameterRequest:
+    properties:
+      biaya_pendaftaran:
+        type: number
+      matpel_ujian1:
+        type: integer
+      matpel_ujian2:
+        type: integer
+      matpel_ujian3:
+        type: integer
+      matpel_ujian4:
+        type: integer
+      tahun_ajar:
+        maxLength: 9
+        type: string
+      tgl_param:
+        type: string
+      ups:
+        type: number
+      usm:
+        type: number
+    required:
+    - tahun_ajar
+    type: object
+  models.Role:
+    properties:
+      role_id:
+        type: integer
+      role_name:
+        type: string
+    type: object
+  models.RoleRequest:
+    properties:
+      role_name:
+        maxLength: 50
+        type: string
+    required:
+    - role_name
+    type: object
+  models.SchoolProfile:
+    properties:
+      alamat:
+        type: string
+      id:
+        type: integer
+      informasi_lainnya:
+        type: string
+      logo:
+        type: string
+      mail:
+        type: string
+      nama_sekolah:
+        type: string
+      phone:
+        type: string
+      system_name:
+        type: string
+      tahun_berdiri:
+        type: string
+      tingkatan_sekolah:
+        type: string
+    type: object
+  models.SchoolProfileRequest:
+    properties:
+      alamat:
+        type: string
+      informasi_lainnya:
+        type: string
+      logo:
+        type: string
+      mail:
+        maxLength: 255
+        type: string
+      nama_sekolah:
+        maxLength: 255
+        type: string
+      phone:
+        maxLength: 255
+        type: string
+      system_name:
+        maxLength: 255
+        type: string
+      tahun_berdiri:
+        maxLength: 255
+        type: string
+      tingkatan_sekolah:
+        maxLength: 255
+        type: string
+    required:
+    - alamat
+    - mail
+    - nama_sekolah
+    - phone
+    - tahun_berdiri
+    - tingkatan_sekolah
+    type: object
+  models.SettingConfig:
+    properties:
+      activity:
+        type: string
+      config_id:
+        type: integer
+      is_active:
+        type: boolean
+      message:
+        type: string
+    type: object
+  models.SettingConfigRequest:
+    properties:
+      activity:
+        maxLength: 255
+        type: string
+      is_active:
+        type: boolean
+      message:
+        type: string
+    required:
+    - activity
+    - is_active
+    - message
+    type: object
   models.User:
     properties:
       role_id:
@@ -170,6 +335,169 @@ paths:
       summary: Logout user and invalidate session
       tags:
       - Auth
+  /parameters:
+    get:
+      description: Get a list of all Parameters.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Parameter'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get all Parameters
+      tags:
+      - Parameters
+    post:
+      consumes:
+      - application/json
+      description: Create a new Parameter. Requires authorization.
+      parameters:
+      - description: Parameter Request Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.ParameterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new Parameter
+      tags:
+      - Parameters
+  /parameters/{id}:
+    delete:
+      description: Delete a Parameter by its ID. Requires authorization.
+      parameters:
+      - description: Parameter ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete Parameter
+      tags:
+      - Parameters
+    get:
+      description: Get a Parameter by its ID.
+      parameters:
+      - description: Parameter ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Parameter'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Parameter by ID
+      tags:
+      - Parameters
+    put:
+      consumes:
+      - application/json
+      description: Update an existing Parameter by its ID. Requires authorization.
+      parameters:
+      - description: Parameter ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Parameter Request Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.ParameterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Parameter
+      tags:
+      - Parameters
   /register:
     post:
       consumes:
@@ -209,6 +537,659 @@ paths:
       summary: Register a new user
       tags:
       - Users
+  /roles:
+    get:
+      description: Get a list of all Roles.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Role'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get all Roles
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      description: Create a new Role. Requires authorization.
+      parameters:
+      - description: Role Request Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.RoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new Role
+      tags:
+      - Roles
+  /roles/{id}:
+    delete:
+      description: Delete a Role by its ID. Requires authorization.
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete Role
+      tags:
+      - Roles
+    get:
+      description: Get a Role by its ID.
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Role'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Role by ID
+      tags:
+      - Roles
+    put:
+      consumes:
+      - application/json
+      description: Update an existing Role by its ID. Requires authorization.
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Role Request Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.RoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Role
+      tags:
+      - Roles
+  /school-locations:
+    get:
+      description: Get a list of all Master Schools (Locations).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.MasterSchool'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get all Master Schools (Locations)
+      tags:
+      - School Locations
+    post:
+      consumes:
+      - application/json
+      description: Create a new Master School (Location). Requires authorization.
+      parameters:
+      - description: Master School Request Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.MasterSchoolRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new Master School (Location)
+      tags:
+      - School Locations
+  /school-locations/{id}:
+    delete:
+      description: Delete a Master School (Location) by its ID. Requires authorization.
+      parameters:
+      - description: Master School ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete Master School (Location)
+      tags:
+      - School Locations
+    get:
+      description: Get a Master School (Location) by its ID.
+      parameters:
+      - description: Master School ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.MasterSchool'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Master School (Location) by ID
+      tags:
+      - School Locations
+    put:
+      consumes:
+      - application/json
+      description: Update an existing Master School (Location) by its ID. Requires
+        authorization.
+      parameters:
+      - description: Master School ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Master School Request Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.MasterSchoolRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Master School (Location)
+      tags:
+      - School Locations
+  /school-profiles:
+    get:
+      description: Get a list of all School Profiles.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.SchoolProfile'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get all School Profiles
+      tags:
+      - School Profiles
+    post:
+      consumes:
+      - application/json
+      description: Create a new School Profile. Requires authorization.
+      parameters:
+      - description: School Profile Request Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SchoolProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new School Profile
+      tags:
+      - School Profiles
+  /school-profiles/{id}:
+    delete:
+      description: Delete a School Profile by its ID. Requires authorization.
+      parameters:
+      - description: School Profile ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete School Profile
+      tags:
+      - School Profiles
+    get:
+      description: Get a School Profile by its ID.
+      parameters:
+      - description: School Profile ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SchoolProfile'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get School Profile by ID
+      tags:
+      - School Profiles
+    put:
+      consumes:
+      - application/json
+      description: Update an existing School Profile by its ID. Requires authorization.
+      parameters:
+      - description: School Profile ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: School Profile Request Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SchoolProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update School Profile
+      tags:
+      - School Profiles
+  /settings:
+    get:
+      description: Get a list of all Setting Configs.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.SettingConfig'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get all Setting Configs
+      tags:
+      - Setting Config
+    post:
+      consumes:
+      - application/json
+      description: Create a new Setting Config. Requires authorization.
+      parameters:
+      - description: Setting Config Request Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SettingConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new Setting Config
+      tags:
+      - Setting Config
+  /settings/{id}:
+    delete:
+      description: Delete a Setting Config by its ID. Requires authorization.
+      parameters:
+      - description: Setting Config ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete Setting Config
+      tags:
+      - Setting Config
+    get:
+      description: Get a Setting Config by its ID.
+      parameters:
+      - description: Setting Config ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SettingConfig'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Get Setting Config by ID
+      tags:
+      - Setting Config
+    put:
+      consumes:
+      - application/json
+      description: Update an existing Setting Config by its ID. Requires authorization.
+      parameters:
+      - description: Setting Config ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Setting Config Request Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SettingConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/utils.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Setting Config
+      tags:
+      - Setting Config
   /users:
     get:
       consumes:
